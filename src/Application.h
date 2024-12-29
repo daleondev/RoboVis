@@ -21,11 +21,17 @@ public:
 
 private:       
     bool onWindowClose(WindowCloseEvent& e);
+    bool onMouseLeave(MouseLeaveEvent& e);
+    bool onMouseMoved(MouseMovedEvent& e);
+    bool onMouseButtonPressed(MouseButtonPressedEvent& e);
+    bool onMouseButtonReleased(MouseButtonReleasedEvent& e);
+    bool onMouseScrolled(MouseScrolledEvent& e);
     static void handleSignal(int signal);
     
     bool m_running;
     float m_lastFrameTime;
 
+    const aiScene* m_scene;
     std::vector<std::shared_ptr<Entity>> m_entities;
 
     static Application* s_instance;

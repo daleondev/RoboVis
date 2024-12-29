@@ -50,12 +50,13 @@ Application::Application()
     Window::create("Application", 800, 600);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
 
-    CameraController::init(53.0f, 0.3f, 1000.0f, glm::translate(glm::mat4(1.0f), {0, 20, -100}));
+    CameraController::init(70.0f, 0.3f, 1000.0f, glm::translate(glm::mat4(1.0f), {0, 0, -20}));
     Renderer::init();
 }
 
 Application::~Application()
 {
+    aiReleaseImport(m_scene);
     Window::shutdown();
 }
 
@@ -75,8 +76,8 @@ int Application::run(int argc, char **argv)
 		return 1;
 	}
 
-    const aiScene* scene = aiImportFile(file.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
-    if (!scene) {
+    m_scene = aiImportFile(file.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
+    if (!m_scene) {
         std::cerr << "Loading input model file failed." << std::endl;
 		return 1;
     }
@@ -87,22 +88,27 @@ int Application::run(int argc, char **argv)
 
     std::shared_ptr<Marker> marker = std::make_shared<Marker>(markerShader);
     marker->create();
-    marker->rotate(M_1_PI, {0.2, 0.2, 0});
-    marker->scale({0.4, 0.4, 0.4});
+    // marker->scale({10, 10, 10});
 
-    std::vector<std::shared_ptr<Mesh>> meshes(scene->mNumMeshes);
+    std::shared_ptr<Marker> marker2 = std::make_shared<Marker>(markerShader);
+    marker2->create();
+    marker2->translate({0.0, 0.0, 5});
+    marker2->scale({0.2, 0.2, 0.2});
+
+    std::vector<std::shared_ptr<Mesh>> meshes(m_scene->mNumMeshes);
     for (size_t i = 0; i < meshes.size(); ++i) {
-        if (scene->mNumMaterials > 0 && scene->mMeshes[i]->mMaterialIndex < scene->mNumMaterials)
-            meshes[i] = std::make_shared<Mesh>(meshShader, scene->mMeshes[i], scene->mMaterials[scene->mMeshes[i]->mMaterialIndex]);
+        if (m_scene->mNumMaterials > 0 && m_scene->mMeshes[i]->mMaterialIndex < m_scene->mNumMaterials)
+            meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], m_scene->mMaterials[m_scene->mMeshes[i]->mMaterialIndex]);
         else {
-            meshes[i] = std::make_shared<Mesh>(meshShader, scene->mMeshes[i], nullptr);
+            meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], nullptr);
         }
         meshes[i]->create();
+        // meshes[i]->rotate(-M_PI_2, {1.0, 0.0, 0.0});
         // meshes[i]->rotate(M_PI_4, {0.0, 1.0, 0.0});
     }
-    aiReleaseImport(scene);
 
     m_entities.push_back(marker);
+    m_entities.push_back(marker2);
     for (auto& mesh : meshes) {
         m_entities.push_back(mesh);
     }
@@ -128,6 +134,8 @@ void Application::onUpdate(const Timestep dt)
     Window::onUpdate();
     CameraController::onUpdate(dt);
 
+    auto pos = Input::GetMousePosition();
+
     Renderer::clear({0.9f, 0.9f, 0.9f, 1.0f});
     for (const auto& entity : m_entities) {
 
@@ -152,13 +160,103 @@ void Application::onEvent(Event& e)
     // std::cout << "Event: " << e.toString() << std::endl;
 
     EventDispatcher dispatcher(e);
-    dispatcher.dispatch<WindowCloseEvent>(BIND_EVENT_FUNCTION(Application::onWindowClose));
+
+    // Window-Event
+    if (e.getCategoryFlags() & static_cast<uint8_t>(EventCategory::Window)) {
+        dispatcher.dispatch<WindowCloseEvent>(BIND_EVENT_FUNCTION(onWindowClose));
+    }
+    // Mouse-Event
+    else if (e.getCategoryFlags() & static_cast<uint8_t>(EventCategory::Mouse)) {
+        dispatcher.dispatch<MouseLeaveEvent>(BIND_EVENT_FUNCTION(onMouseLeave));
+        dispatcher.dispatch<MouseMovedEvent>(BIND_EVENT_FUNCTION(onMouseMoved));
+        dispatcher.dispatch<MouseButtonPressedEvent>(BIND_EVENT_FUNCTION(onMouseButtonPressed));
+        dispatcher.dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FUNCTION(onMouseButtonReleased));    
+        dispatcher.dispatch<MouseScrolledEvent>(BIND_EVENT_FUNCTION(onMouseScrolled));
+    }
 }
 
 bool Application::onWindowClose(WindowCloseEvent& e)
 {   
-    std::cout << "Closing Window" << std::endl;
+    // std::cout << "Closing Window" << std::endl;
     m_running = false;
+
+    return true;
+}
+
+bool Application::onMouseLeave(MouseLeaveEvent& e)
+{   
+    // std::cout << "onMouseLeave" << std::endl;
+    CameraController::stopInteraction();
+
+    return true;
+}
+
+bool Application::onMouseMoved(MouseMovedEvent& e)
+{   
+    // std::cout << "onMouseMoved " << e.toString() << std::endl;
+    if (CameraController::isDragging()) {
+        const auto pos = e.getPosition();
+        CameraController::drag({pos.first, pos.second});
+    }
+
+    return true;
+}
+
+bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e)
+{
+    // std::cout << "onMouseButtonPressed" << std::endl;
+    switch(e.getMouseButton()) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+        {
+            CameraController::startDraggingTrans(Input::GetMousePosition());
+            break;
+        }
+        case GLFW_MOUSE_BUTTON_RIGHT:
+        {
+            CameraController::startDraggingRot(Input::GetMousePosition(), m_scene);
+            break;
+        }
+    }
+
+    if (CameraController::isDragging())
+        if (auto pos = CameraController::getDraggingPosition(); pos) {
+            glm::mat4 t(1.0f);
+            t[0][3] = pos->x;
+            t[1][3] = pos->y;
+            t[2][3] = pos->z;
+            std::cout << pos->x << ", " << pos->y << ", " << pos->z << "\n";
+            // m_entities[0]->scale({0.1f, 0.1f, 0.1f});
+            m_entities[0]->setTranslation(*pos);
+            // m_entities[0]->scale({10.0f, 10.0f, 0.1f});
+        }
+
+    return true;
+}
+
+bool Application::onMouseButtonReleased(MouseButtonReleasedEvent& e)
+{
+    // std::cout << "onMouseButtonReleased" << std::endl;
+    switch(e.getMouseButton()) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+        {
+            CameraController::stopDraggingTrans();
+            break;
+        }
+        case GLFW_MOUSE_BUTTON_RIGHT:
+        {
+            CameraController::stopDraggingRot();
+            break;
+        }
+    }
+
+    return true;
+}
+
+bool Application::onMouseScrolled(MouseScrolledEvent& e)
+{
+    // std::cout << "onMouseScrolled" << std::endl;
+    CameraController::zoom(e.getYOffset());
+
     return true;
 }
 

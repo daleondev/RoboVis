@@ -2,6 +2,34 @@
 
 #include "Event.h"
 
+class MouseEnterEvent : public Event
+{
+public:
+	MouseEnterEvent() = default;
+
+	std::string toString() const override
+	{
+		return "MouseEnterEvent";
+	}
+
+	EVENT_CLASS_TYPE(MouseEnterEvent)
+	EVENT_CLASS_CATEGORY(static_cast<uint8_t>(EventCategory::Mouse))
+};
+
+class MouseLeaveEvent : public Event
+{
+public:
+	MouseLeaveEvent() = default;
+
+	std::string toString() const override
+	{
+		return "MouseLeaveEvent";
+	}
+
+	EVENT_CLASS_TYPE(MouseLeave)
+	EVENT_CLASS_CATEGORY(static_cast<uint8_t>(EventCategory::Mouse))
+};
+
 class MouseMovedEvent : public Event {
 public:
 	MouseMovedEvent(const float x, const float y) : m_position(x, y) {}

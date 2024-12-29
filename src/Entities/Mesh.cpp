@@ -52,6 +52,9 @@ void Mesh::createBuffers()
     std::vector<GLushort> indices(m_data->mNumFaces * 3);
     size_t i = 0;
     for (size_t j = 0; j < m_data->mNumFaces; ++j) { 
+        if (m_data->mFaces[j].mNumIndices < 3)
+            continue;
+
         indices[i++] = m_data->mFaces[j].mIndices[0];
         indices[i++] = m_data->mFaces[j].mIndices[1];
         indices[i++] = m_data->mFaces[j].mIndices[2];

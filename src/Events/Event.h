@@ -5,13 +5,14 @@
 #include <sstream>
 #include <functional>
 
-#define BIND_EVENT_FUNCTION(fn) std::bind(&fn, this, std::placeholders::_1)
+// #define BIND_EVENT_FUNCTION(fn) std::bind(&fn, this, std::placeholders::_1)
+#define BIND_EVENT_FUNCTION(fn) [this]<typename T>(T&& x) { return fn(std::forward<T>(x)); }
 
 enum class EventType : uint8_t {
     None = 0,
     WindowClose, WindowResize,
     KeyPressed, KeyReleased, KeyTyped,
-    MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
+    MouseEnterEvent, MouseLeave, MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
 };
 
 enum class EventCategory : uint8_t {

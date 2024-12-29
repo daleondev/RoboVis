@@ -78,16 +78,19 @@ void Window::init()
             {
                 KeyPressedEvent event(key, 0);
                 data.eventCallback(event);
+                break;
             }
             case GLFW_RELEASE:
             {
                 KeyReleasedEvent event(key);
                 data.eventCallback(event);
+                break;
             }
             case GLFW_REPEAT:
             {
                 KeyPressedEvent event(key, 1);
                 data.eventCallback(event);
+                break;
             }
         }
     });
@@ -101,11 +104,13 @@ void Window::init()
             {
                 MouseButtonPressedEvent event(button);
                 data.eventCallback(event);
+                break;
             }
             case GLFW_RELEASE:
             {
                 MouseButtonReleasedEvent event(button);
                 data.eventCallback(event);
+                break;
             }
         }
     });
@@ -122,6 +127,19 @@ void Window::init()
         
         MouseMovedEvent event(static_cast<float>(xPos), static_cast<float>(yPos));
         data.eventCallback(event);
+    });
+
+    glfwSetCursorEnterCallback(s_window, [](GLFWwindow* window, int entered) -> void {
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        
+        if (entered) {
+            MouseEnterEvent event;
+            data.eventCallback(event);
+        }
+        else {
+            MouseLeaveEvent event;
+            data.eventCallback(event);
+        }
     });
 
     s_initialized = true;
