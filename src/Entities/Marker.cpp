@@ -9,10 +9,16 @@ Marker::Marker(const std::shared_ptr<Shader>& shader)
     createBuffers();
 }
 
-Marker::~Marker() = default;
+Marker::~Marker()
+{
+    m_vertexArray.release();
+}
 
 void Marker::draw(const std::optional<Camera>& camera)
 {
+    if (!m_visible)
+        return;
+
     if (camera)
         updateMvp(camera);
         

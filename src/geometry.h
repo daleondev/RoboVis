@@ -2,6 +2,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/epsilon.hpp>
 
@@ -9,9 +10,17 @@
 #include <optional>
 #include <iostream>
 
+#define MAT_ROW3(mat, row) glm::vec3(mat[row][0], mat[row][1], mat[row][2])
+#define MAT_COL3(mat, col) glm::vec3(mat[0][col], mat[1][col], mat[2][col])
+
 static float deg2rad(const float deg) 
 {
     return deg * static_cast<float>(M_PI) / 180.0f;
+};
+
+static float rad2deg(const float rad) 
+{
+    return rad * 180.0f / static_cast<float>(M_PI);
 };
 
 static glm::vec4 extendedCross(const glm::vec4& A, const glm::vec4& B, const glm::vec4& C)
@@ -105,6 +114,9 @@ static bool pointInTriangle(const glm::vec3& n, const glm::vec3& p0, std::array<
     if (glm::any(glm::isnan(n)) || glm::any(glm::isnan(p0)))
         return false;
 
+    if (glm::any(glm::epsilonEqual(v[0], v[1], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(v[1], v[2], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(v[2], v[0], glm::epsilon<float>())))
+        return false;
+
     glm::mat3 r(1.0f);
     if (!glm::all(glm::epsilonEqual(n, UNIT_Z, glm::epsilon<float>())) && !glm::all(glm::epsilonEqual(n, -UNIT_Z, glm::epsilon<float>())))
         r = rotationVecToVec(n, UNIT_Z);
@@ -140,12 +152,89 @@ static bool pointInTriangle(const glm::vec3& n, const glm::vec3& p0, std::array<
     return true;
 }
 
-// static std::optional<glm::vec3> rayMeshIntersection(const std::array<glm::vec3, 3>& v, const glm::vec3& l, const glm::vec3& l0)
-// {
+static glm::mat3 anlgeAxisF(const float angle, const glm::vec3& axis)
+{
+    auto u = glm::normalize(axis);
+    const auto c = cosf(angle);
+    const auto s = sinf(angle);
 
-// }
+    const auto t1 = 1-c;
+    return glm::mat3(
+        glm::vec3(c + u[0]*u[0]*t1, u[0]*u[1]*t1 - u[2]*s, u[0]*u[2]*t1 + u[1]*s),
+        glm::vec3(u[1]*u[0]*t1 + u[2]*s, c + u[1]*u[1]*t1, u[1]*u[2]*t1 - u[0]*s),
+        glm::vec3(u[2]*u[0]*t1 - u[1]*s, u[2]*u[1]*t1 + u[0]*s, c + u[2]*u[2]*t1)
+    );
+}
 
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+static void printMat(const glm::mat4& mat)
+{
+    for (size_t i = 0; i < 4; ++i) {
+        printf("%5.5f %-5.5f %-5.5f %-5.5f\n", mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
+    }
+    std::cout << "\n";
+}
+
+
+static void printVec(const glm::vec3& vec)
+{
+    for (size_t i = 0; i < 3; ++i) {
+        std::cout << vec[i] << "\t";
+    }
+    std::cout << "\n";
+}
+
+static glm::mat3 findSubMatrix(glm::mat4 mat, int rowNum, int colNum)
+{
+	glm::mat3 subMatrix;
+	
+    int x=0;
+	for (int i=0; i<4; ++i)
+	{        
+        if (i == rowNum)
+            continue;
+            
+        int y = 0;
+		for (int j=0; j<4; ++j)
+		{
+            if (j == colNum)
+                continue;
+            subMatrix[x][y++] = mat[i][j];
+		}
+        x++;
+	}
+	
+	return subMatrix;
+}
+
+static glm::mat4 inverseMat(glm::mat4 mat)
+{
+	glm::mat4 adjugate;
+	
+	int sign = 1;
+	int rowSign = 1;
+	for (int row=0; row<4; ++row)
+	{
+		for (int col=0; col<4; ++col)
+		{
+			auto subMatrix = findSubMatrix(mat, row, col);
+			auto subMatrixDeterminant = glm::determinant(subMatrix);
+			adjugate[row][col] = sign * subMatrixDeterminant;
+			sign *= -1;
+		}
+		rowSign *= -1;
+		sign = rowSign;
+	}
+	
+	auto adjT = glm::transpose(adjugate);
+	
+	// Compute the inverse.
+	auto determinant = glm::determinant(mat);
+    assert(fabs(determinant) > 1e-9);
+
+	return (1.0f / determinant) * adjT;
 }

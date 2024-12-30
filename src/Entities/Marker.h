@@ -13,4 +13,6 @@ public:
 
 private:
     virtual void createBuffers() override;
+
+    VertexArray m_vertexArray;
 };

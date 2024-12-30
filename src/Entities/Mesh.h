@@ -3,21 +3,33 @@
 #include "Entity.h"
 #include "Camera.h"
 
-#include <assimp/mesh.h>
-#include <assimp/material.h>
+#include <assimp/scene.h>
+
+struct MeshData
+{
+    struct Vertex
+    {
+        glm::vec3 pos;
+        glm::vec4 color;
+    };
+
+    std::vector<Vertex> vertices;
+    std::vector<std::array<uint16_t, 3>> indices;
+};
 
 class Mesh : public Entity {
 
 public:
-    Mesh(const std::shared_ptr<Shader>& shader, aiMesh* data, aiMaterial* material);
+    Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source);
     virtual ~Mesh();
 
     virtual void draw(const std::optional<Camera>& camera = {}) override;
 
+    const std::vector<MeshData>& getData();
+
 private:
     virtual void createBuffers() override;
 
-    glm::mat4 m_model;
-    aiMesh* m_data;
-    aiMaterial* m_material;
+    std::vector<MeshData> m_meshData;
+    std::vector<VertexArray> m_vertexArrays;
 };

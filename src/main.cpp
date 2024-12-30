@@ -54,6 +54,40 @@ int main(int argc, char **argv)
 
     // std::cout << pointInTriangle(n, p0, v, *i) << std::endl;
 
+    // std::vector<std::array<int, 2>> data(2);
+    // data[0][0] = 24;
+    // data[0][1] = -100;
+    // data[1][0] = 13;
+    // data[1][1] = 10321;
+
+    // int arr[4];
+    // memcpy(arr, data.data()->data(), sizeof(arr));
+
+    // for (int i = 0;i < 4; ++i)
+    //     std::cout << arr[i] << std::endl;
+
+    // glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);  
+    // glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+    // glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+    // glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f); 
+    // glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+    // glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+
+    // glm::mat4 view;
+    // view = glm::lookAt( cameraPos, 
+    //                     cameraTarget, 
+    //                     cameraUp);
+
+    // printMat(view);
+
+    // glm::mat4 t = glm::translate(glm::mat4(1.0f), {1, 0, 5});
+    // printMat(t);
+
+    // glm::vec3 p(1, 2, 3);
+    // p = t*glm::vec4(p, 1.0f);
+
+    // std::cout << p.x << ", " << p.y << ", " << p.z << "\n";
+
     auto app = std::make_unique<Application>();
     return app->run(argc, argv);
 }

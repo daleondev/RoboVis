@@ -26,6 +26,9 @@ public:
     void transform(const glm::mat4& transformation); 
     void scale(const glm::vec3& scale);
 
+    inline bool isVisible() const { return m_visible; }
+    inline void setVisible(const bool visible) { m_visible = visible; }
+
 protected:
     virtual void createBuffers() = 0;
 
@@ -33,6 +36,6 @@ protected:
 
     glm::mat4 m_model;
     std::shared_ptr<Shader> m_shader;
-    VertexArray m_vertexArray;
+    bool m_visible;
 
 };

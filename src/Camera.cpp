@@ -1,12 +1,15 @@
 #include "Camera.h"
 
 #include "Window.h"
+#include "Scene.h"
 #include "Input.h"
+
+#include "Entities/Mesh.h"
 
 #include "geometry.h"
 
 Camera::Camera()
-    : m_projection{ glm::mat4(1.0f) }, m_view{ glm::mat4(1.0f) }
+    : m_pos(1.0f) , m_projection(1.0f), m_view(1.0f)
 {
     
 }
@@ -20,51 +23,76 @@ void Camera::setProjection(const glm::mat4& projection)
 
 void Camera::reset()
 {
+    m_pos = glm::mat4(1.0f);
     m_view = glm::mat4(1.0f);
 }
 
 void Camera::setTranslation(const glm::vec3& translation)
 {
     for (size_t i = 0; i < 3; ++i)
-        m_view[3][i] = translation[i];
+        m_pos[i][3] = translation[i];
+    posToView();
 }
 
 void Camera::setRotation(const float angle, const glm::vec3& axis)
 {
-    const glm::mat3 rot = glm::toMat3(glm::angleAxis(angle, axis));
+    const glm::mat3 R = anlgeAxisF(angle, axis);
     for (size_t i = 0; i < 3; ++i)
         for (size_t j = 0; j < 3; ++j)
-            m_view[i][j] = rot[i][j];
+            m_pos[i][j] = R[i][j];
+    posToView();
 }
 
 void Camera::setTransformation(const glm::mat4& transformation)
 {
-    m_view = transformation;
+    m_pos = transformation;
+    posToView();
 }
 
-void Camera::translate(const glm::vec3& translation)
+void Camera::translateWorld(const glm::vec3& translation)
 {
-    m_view = glm::translate(m_view, translation);
+    for (size_t i = 0; i < 3; ++i)
+        m_pos[i][3] += translation[i];
+    posToView();
+}
+
+void Camera:: translateLocal(const glm::vec3& translation)
+{
+    const auto dirX = MAT_COL3(m_pos, 0);
+    const auto dirY = MAT_COL3(m_pos, 1);
+    const auto dirZ = MAT_COL3(m_pos, 2);
+    const auto t = dirX*translation.x + dirY*translation.y + dirZ*translation.z;
+    for (size_t i = 0; i < 3; ++i)
+        m_pos[i][3] += t[i];
+    posToView();
 }
 
 void Camera::rotate(const float angle, const glm::vec3& axis)
 {
-    m_view = glm::rotate(m_view, angle, axis);
+    auto R = anlgeAxisF(angle, axis);
+    m_pos = glm::mat4(R) * m_pos;
+    posToView();
+}
+
+void Camera::rotate(const glm::mat3& R)
+{
+    m_pos = glm::mat4(R) * m_pos;
+    posToView();
 }
 
 void Camera::transform(const glm::mat4& transformation)
 {
-    m_view *= transformation;
-}    
-
-glm::mat4 Camera::getProjection() const
-{
-    return m_projection;
+    m_pos = transformation * m_pos;
+    posToView();
 }
 
-glm::mat4 Camera::getView() const
+void Camera::posToView()
 {
-    return m_view;
+    const auto trans = MAT_COL3(m_pos, 3);
+    const auto dirZ = MAT_COL3(m_pos, 2);
+    const auto dirY = MAT_COL3(m_pos, 1);
+    const auto target = trans + dirZ;
+    m_view = glm::lookAt(trans, target, dirY);;
 }
 
 // ------------------------------------------------
@@ -76,41 +104,9 @@ float CameraController::s_zNear;
 
 bool CameraController::s_draggingTrans;
 bool CameraController::s_draggingRot;
-glm::vec2 CameraController::s_dragStart;
-glm::mat4 CameraController::s_camStart;
-std::optional<glm::vec3> CameraController::s_entityStart;
-
-static CameraParameters calculateCameraIntrinsics(const float width, const float height, const float hfov)
-{
-    float x = width;
-    float y = height;
-
-    float cx = x / 2.0f;
-    float cy = y / 2.0f;
-
-    float ax = deg2rad(hfov);
-    float ay = 2 * atan(y * tan(ax / 2) / x);
-
-    float fx = cx / tan(ax / 2);
-    float fy = cy / tan(ay / 2);
-
-    CameraParameters params;
-    params.width = width;
-    params.height = height;
-    params.hfov = hfov;
-    // +--------+
-    // |fx 0  cx|
-    // |0  fy cy|
-    // |0  0  1 |
-    // +--------+
-    params.intrinsics = {
-        glm::vec3{fx  , 0.0f, cx  },
-        glm::vec3{0.0f, fy  , cy  },
-        glm::vec3{0.0f, 0.0f, 1.0f}
-    };
-
-    return params;
-}
+glm::vec2 CameraController::s_screenPosPrev;
+glm::mat4 CameraController::s_camPosPrev;
+std::optional<glm::vec3> CameraController::s_dragPos;
 
 void CameraController::init(const float hFov, const float zNear, const float zFar, const glm::mat4& initialTransformation)
 {
@@ -121,35 +117,26 @@ void CameraController::init(const float hFov, const float zNear, const float zFa
     s_draggingTrans = false;
     s_draggingRot = false;
 
-    // glm::vec3 cameraPos = glm::vec3(0.0f, 10.0f, 20.0f);  
-    // glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    // glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-    // glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f); 
-    // glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
-    // glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
-    // s_camera.setTransformation(glm::lookAt(cameraPos, cameraTarget, cameraUp));
-
     s_camera.setTransformation(initialTransformation);
-
     updateProjection();
 }
 
 void CameraController::onUpdate(const Timestep dt)
 {
     if (Input::isKeyPressed(GLFW_KEY_A))
-        s_camera.translate({-s_transFactor * dt, 0.0f, 0.0f});
+        s_camera.rotate(-200 * dt, {0.0f, 1.0f, 0.0f});
 
     else if(Input::isKeyPressed(GLFW_KEY_D))
-        s_camera.translate({s_transFactor * dt, 0.0f, 0.0f});
+        s_camera.rotate(200 * dt, {0.0f, 1.0f, 0.0f});
 
     if (Input::isKeyPressed(GLFW_KEY_W))
-        s_camera.translate({0.0f, s_transFactor * dt, 0.0f});
+        s_camera.rotate(200 * dt, {1.0f, 0.0f, 0.0f});
 
     else if (Input::isKeyPressed(GLFW_KEY_S))
-        s_camera.translate({0.0f, -s_transFactor * dt, 0.0f});
+        s_camera.rotate(-200 * dt, {1.0f, 0.0f, 0.0f});
 }
 
-void CameraController::resize()
+void CameraController::onResize()
 {
     updateProjection();
 }
@@ -160,15 +147,15 @@ void CameraController::stopInteraction()
     stopDraggingRot();
 }
 
-void CameraController::startDraggingTrans(const glm::vec2& pos)
+void CameraController::startDraggingTrans(const glm::vec2& screenPos)
 {
     if (s_draggingRot)
         return;
 
     s_draggingTrans = true;
-    s_dragStart = pos;
-    s_camStart = s_camera.getView();
-    s_entityStart = {};
+    s_screenPosPrev = screenPos;
+    s_camPosPrev = s_camera.getView();
+    s_dragPos = {};
 }
 
 void CameraController::stopDraggingTrans()
@@ -176,95 +163,116 @@ void CameraController::stopDraggingTrans()
     s_draggingTrans = false;
 }
 
-void CameraController::startDraggingRot(const glm::vec2& pos, const aiScene* scene)
+void CameraController::startDraggingRot(const glm::vec2& screenPos)
 {
     if (s_draggingTrans)
         return;
 
-    const auto&[l, l0] = cameraRay(pos);
-    // std::cout << l0[0] << " "  << l0[1] << " "  << l0[2] << "\n";
-    // std::cout << l[0] << " "  << l[1] << " "  << l[2] << "\n";
-
-    const glm::vec3 camPos = -s_camera.getView()[3];
+    const glm::mat4 camPos = s_camera.getPosition();
+    const glm::vec3 camOrig = -MAT_COL3(camPos, 3);
+    const auto&[l, l0] = cameraRay(screenPos, camPos);
+    
     float minDist = std::numeric_limits<float>::max();
     std::optional<glm::vec3> hitPos;
-    for (size_t i = 0; i < scene->mNumMeshes; ++i) {
-        for (size_t j = 0; j < scene->mMeshes[i]->mNumFaces; ++j) {     
-            if (scene->mMeshes[i]->mFaces[j].mNumIndices < 3)
-                continue;
+    for (auto&[name, entity] : Scene::getEntities()) {
+        if(Mesh* mesh = dynamic_cast<Mesh*>(entity.get()); mesh != nullptr) {
+            const auto& meshData = mesh->getData();
 
-            std::array<glm::vec3, 3> v;
-            for (size_t k = 0; k < 3; ++k) {
-                v[k].x = scene->mMeshes[i]->mVertices[scene->mMeshes[i]->mFaces[j].mIndices[k]].x;
-                v[k].y = scene->mMeshes[i]->mVertices[scene->mMeshes[i]->mFaces[j].mIndices[k]].y;
-                v[k].z = scene->mMeshes[i]->mVertices[scene->mMeshes[i]->mFaces[j].mIndices[k]].z;
-            }
+            for (const auto& data : meshData) {
+                for (const auto& indices : data.indices) {
+                    std::array<glm::vec3, 3> v;
+                    for (size_t i = 0; i < 3; ++i)
+                        v[i] = data.vertices[indices[i]].pos;
 
-            const auto&[n, p0] = trianglePlane(v);
-            const auto p = intersectionLinePlane(n, p0, l, l0);
-            if (p) {
-                if(pointInTriangle(n, p0, v, *p)) {
-                    const float dist = glm::length(*p - camPos);
-                    if (!hitPos || dist < minDist) {
-                        hitPos = *p;
-                        minDist = dist;
+                    const auto&[n, p0] = trianglePlane(v);
+                    const auto p = intersectionLinePlane(n, p0, l, l0);
+                    if (p) {
+                        if(pointInTriangle(n, p0, v, *p)) {
+                            const float dist = glm::length(*p - camOrig);
+                            if (!hitPos || dist < minDist) {
+                                hitPos = *p;
+                                minDist = dist;
+                            }
+                        }
                     }
                 }
             }
-        } 
+        }
     }
 
-    if (hitPos) {
-        std::cout << "Hit\n";
-        s_draggingRot = true;
-        s_dragStart = pos;
-        s_entityStart = *hitPos;
-        s_camStart = s_camera.getView();
-    }
+    s_draggingRot = true;
+    s_screenPosPrev = screenPos;
+    s_camPosPrev = s_camera.getPosition();
+    s_dragPos = hitPos && !glm::any(glm::isnan(*hitPos)) ? *hitPos : glm::vec3(0.0f);
 }
 
 void CameraController::stopDraggingRot()
 {
-    s_entityStart = {};
+    s_dragPos = {};
     s_draggingRot = false;
 }
 
-void CameraController::drag(const glm::vec2& pos)
+void CameraController::drag(const glm::vec2& screenPos)
 {
+    const auto camPos = s_camera.getPosition();
+
+    if (glm::any(glm::isnan(camPos[0])) || glm::any(glm::isnan(camPos[1])) || glm::any(glm::isnan(camPos[2])) || glm::any(glm::isnan(camPos[3]))) {
+        stopDraggingTrans();
+        stopDraggingRot();
+        s_camera.reset();
+        return;
+    }
+
     if (s_draggingTrans) {
-        const glm::vec2 v = -s_transFactor*(pos - s_dragStart);
-        s_camera.setTransformation(glm::translate(s_camStart, {v.x, -v.y, 0.0}));
+        const glm::vec2 v = -s_dragFactor*(screenPos - s_screenPosPrev);
+        s_camera.translateLocal(glm::vec3(v.x, v.y, 0.0));
+        s_camPosPrev = s_camera.getPosition();
+        s_screenPosPrev = screenPos;
     }
 
     else if (s_draggingRot) {       
-        ;
+        const auto angle = -deg2rad(s_rotFactor*glm::length(screenPos - s_screenPosPrev));
+
+        auto camOrig = MAT_COL3(camPos, 3);
+        auto camDirZ = MAT_COL3(camPos, 2);
+        auto camDirY = MAT_COL3(camPos, 1);
+        auto camDirX = MAT_COL3(camPos, 0);
+       
+        auto screenPrev = s_screenPosPrev; screenPrev.y = Window::getHeight()-screenPrev.y;
+        auto screenCurr = screenPos; screenCurr.y = Window::getHeight()-screenCurr.y;
+        auto[_1, prev] = CameraController::cameraRay(screenPrev, s_camPosPrev);
+        auto[_2, curr] = CameraController::cameraRay(screenCurr, camPos);
+
+        const auto dragDir = glm::normalize(curr - prev);
+        const auto axis = cross(dragDir, camDirZ);
+        const auto rot = anlgeAxisF(angle, axis);
+        const auto camToDrag = *s_dragPos - camOrig;
+        const auto camToDragLocal = glm::inverseTranspose(camPos) * glm::vec4(camToDrag, 0.0f);
+
+        s_camera.translateLocal(camToDragLocal);
+        s_camera.rotate(rot);
+        s_camera.translateLocal(-camToDragLocal);
+
+        s_camPosPrev = s_camera.getPosition();
+        s_screenPosPrev = screenPos;
     }
 }
 
 void CameraController::zoom(const float factor)
 {
-    s_camera.translate({0.0f, 0.0f, 5*factor});
+    auto[l, l0] = cameraRay(Input::GetMousePosition(), s_camera.getPosition());
+    s_camera.translateWorld(factor*s_scrollFactor*l);
 }
 
 void CameraController::updateProjection()
 {
     assert(Window::isInitialized() && "Window not initialized");
 
-    // const auto params = calculateCameraIntrinsics(static_cast<float>(Window::getWidth()), static_cast<float>(Window::getHeight()), s_hFov);
-    // const auto projection = glm::transpose(glm::mat4{
-    //     glm::vec4{2.0f * params.intrinsics[0][0] / params.width,  0.0f                                           ,  1.0f - 2.0f * params.intrinsics[0][2] / params.width    , 0.0f                                          },
-    //     glm::vec4{0.0f                                         , -2.0f * params.intrinsics[1][1] / params.height ,  2.0f * params.intrinsics[1][2] / params.height - 1.0f   , 0.0f                                          },
-    //     glm::vec4{0.0f                                         ,  0.0f                                           ,  (s_zFar + s_zNear) / (s_zNear - s_zFar)                 , 2.0f * s_zFar * s_zNear / (s_zNear - s_zFar)  },
-    //     glm::vec4{0.0f                                         ,  0.0f                                           , -1.0f                                                    , 0.0f                                          }
-    // });
-
-    // s_camera.setProjection(projection);
-
     float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
     s_camera.setProjection(glm::perspective(s_hFov, aspect, s_zNear, s_zFar));
 }
 
-std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& pos)
+std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& screenPos, const glm::mat4& camPos)
 {
     const float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
     const float tangent = tanf(deg2rad(s_hFov/2.0f));
@@ -280,33 +288,32 @@ std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& po
     const float bottomFar = -topFar;
 
     glm::vec3 near;
-    near.x = map(pos.x, 0, Window::getWidth(), leftNear, rightNear);
-    near.y = map(pos.y, 0, Window::getHeight(), topNear, bottomNear);
+    near.x = map(screenPos.x, 0, Window::getWidth(), leftNear, rightNear);
+    near.y = map(screenPos.y, 0, Window::getHeight(), topNear, bottomNear);
     near.z = s_zNear;
 
     glm::vec3 far;
-    far.x = map(pos.x, 0, Window::getWidth(), leftFar, rightFar);
-    far.y = map(pos.y, 0, Window::getHeight(), topFar, bottomFar);
+    far.x = map(screenPos.x, 0, Window::getWidth(), leftFar, rightFar);
+    far.y = map(screenPos.y, 0, Window::getHeight(), topFar, bottomFar);
     far.z = s_zFar;
 
-    const auto view = s_camera.getView();
-    const glm::vec3 camPos = -view[3];
-    const glm::vec3 camZ = -view[2];
-    const glm::vec3 camY = view[1];
-    const glm::vec3 camX = view[0];
+    const glm::vec3 camOrig = MAT_COL3(camPos, 3);
+    const glm::vec3 camDirZ = MAT_COL3(camPos, 2);
+    const glm::vec3 camDirY = MAT_COL3(camPos, 1);
+    const glm::vec3 camDirX = -MAT_COL3(camPos, 0);
 
-    glm::vec3 camNear = camPos;
-    camNear += camX*near.x;
-    camNear += camY*near.y;
-    camNear += camZ*near.z;
+    glm::vec3 camNear = camOrig;
+    camNear += camDirX*near.x;
+    camNear += camDirY*near.y;
+    camNear += camDirZ*near.z;
 
-    glm::vec3 camFar = camPos;
-    camFar += camX*far.x;
-    camFar += camY*far.y;
-    camFar += camZ*far.z;
+    glm::vec3 camFar = camOrig;
+    camFar += camDirX*far.x;
+    camFar += camDirY*far.y;
+    camFar += camDirZ*far.z;
 
     const glm::vec3 l0 = camNear;
-    const glm::vec3 l = camFar - camNear;
+    const glm::vec3 l = glm::normalize(camFar - camNear);
 
     return {l, l0};
 }

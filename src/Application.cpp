@@ -19,6 +19,8 @@
 #include <csignal>
 #include <iostream>
 
+#include "geometry.h"
+
 Application* Application::s_instance = nullptr;
 
 static std::vector<std::string> splitString(std::string str, const char* delims)
@@ -49,8 +51,7 @@ Application::Application()
     Window::create("Application", 800, 600);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
 
-    CameraController::init(70.0f, 0.3f, 1000.0f, glm::translate(glm::mat4(1.0f), {0, 0, -20}));
-    Renderer::init();
+    Scene::init();
 }
 
 Application::~Application()
@@ -84,8 +85,10 @@ int Application::run(int argc, char **argv)
     // auto markerShader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Marker");
     // auto meshShader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh");
 
-    // Scene::createMarker("Marker1");
-    Scene::createMesh("Mesh1", m_scene);
+    std::shared_ptr<Entity> marker = Scene::createMarker("DragMarker");
+    marker->scale({10.0f, 10.0f, 10.0f});
+    marker->setVisible(false);
+    // Scene::createMesh("Mesh1", m_scene);
 
     // std::shared_ptr<Marker> marker = std::make_shared<Marker>(markerShader);
     // marker->create();

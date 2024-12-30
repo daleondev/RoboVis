@@ -8,10 +8,20 @@
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+#include "geometry.h"
 
 std::unordered_map<std::string, std::shared_ptr<Entity>> Scene::s_entities;
 
-void Scene::createMesh(const std::string& name, const aiScene* meshSource, const glm::mat4& initialTransformation)
+void Scene::init()
+{
+    glm::mat4 t(1.0f);
+    t = glm::toMat4(glm::angleAxis(M_PIf32, glm::vec3(0.0f, 1.0f, 0.0f)));
+    t[2][3] = 20.0f;
+    CameraController::init(70.0f, 0.3f, 1000.0f, t);
+    Renderer::init();
+}
+
+std::shared_ptr<Entity> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Shader> shader;
     if (ShaderLibrary::exists("Mesh"))
@@ -19,12 +29,13 @@ void Scene::createMesh(const std::string& name, const aiScene* meshSource, const
     else
         shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh", "Mesh");
 
-    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(shader, meshSource->mMeshes[2], meshSource->mMaterials[meshSource->mMeshes[2]->mMaterialIndex]);
+    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(shader, source);
     mesh->setTransformation(initialTransformation);
     addEntity(name, mesh);
+    return mesh;
 }
 
-void Scene::createMarker(const std::string& name, const glm::mat4& initialTransformation)
+std::shared_ptr<Entity> Scene::createMarker(const std::string& name, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Shader> shader;
     if (ShaderLibrary::exists("Marker"))
@@ -35,6 +46,7 @@ void Scene::createMarker(const std::string& name, const glm::mat4& initialTransf
     std::shared_ptr<Marker> marker = std::make_shared<Marker>(shader);
     marker->setTransformation(initialTransformation);
     addEntity(name, marker);
+    return marker;
 }
 
 void Scene::addEntity(const std::string& name, const std::shared_ptr<Entity>& entity) 
@@ -50,7 +62,7 @@ std::shared_ptr<Entity> Scene::getEntity(const std::string& name)
 }
 void Scene::deleteEntity(const std::string& name) 
 { 
-    EntityIterator it = s_entities.find(name);
+    auto it = s_entities.find(name);
     assert(it != s_entities.end() && "Entity doesnt exist");
     s_entities.erase(it);
 }
@@ -108,19 +120,17 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
         }
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
-            // CameraController::startDraggingRot(Input::GetMousePosition(), m_scene);
+            CameraController::startDraggingRot(Input::GetMousePosition());
             break;
         }
     }
 
-    if (CameraController::isDragging())
+    if (CameraController::isDragging() && entityExists("DragMarker"))
         if (auto pos = CameraController::getDraggingPosition(); pos) {
-            glm::mat4 t(1.0f);
-            t[0][3] = pos->x;
-            t[1][3] = pos->y;
-            t[2][3] = pos->z;
-            std::cout << pos->x << ", " << pos->y << ", " << pos->z << "\n";
-            s_entities[0]->setTranslation(*pos);
+            auto marker = getEntity("DragMarker");
+            marker->setTranslation(*pos);
+            marker->setVisible(true);
+            std::cout << pos->x << ", "  << pos->y << ", " << pos->z << "\n";
         }
 
     return true;
@@ -138,6 +148,8 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
             CameraController::stopDraggingRot();
+            if (entityExists("DragMarker"))
+                getEntity("DragMarker")->setVisible(false);
             break;
         }
     }
@@ -156,7 +168,7 @@ bool Scene::onMouseScrolled(MouseScrolledEvent& e)
 bool Scene::onWindowResized(WindowResizeEvent& e)
 {
     // std::cout << "onWindowResized" << e.toString() << std::endl;
-    CameraController::resize();
+    CameraController::onResize();
 
     return true;
 }
