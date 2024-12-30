@@ -232,11 +232,15 @@ GLint Shader::getUniformLocation(const std::string& name) const
     return location;
 }
 
+// --------------------------------------------------
+
+std::unordered_map<std::string, std::shared_ptr<Shader>> ShaderLibrary::s_shaders;
+
 void ShaderLibrary::add(const std::shared_ptr<Shader>& shader)
 {
     const auto name = shader->getName();
-    assert(m_shaders.find(name) == m_shaders.end() && "shader already exists");
-    m_shaders[name] = shader;
+    assert(s_shaders.find(name) == s_shaders.end() && "shader already exists");
+    s_shaders[name] = shader;
 }
 
 std::shared_ptr<Shader> ShaderLibrary::load(const std::string& filepath, const std::string& name)
@@ -267,6 +271,6 @@ std::shared_ptr<Shader> ShaderLibrary::load(const std::string& name, const std::
 
 std::shared_ptr<Shader> ShaderLibrary::get(const std::string& name)
 {
-    assert(m_shaders.find(name) != m_shaders.end() && "shader not found");
-    return m_shaders[name];
+    assert(s_shaders.find(name) != s_shaders.end() && "shader not found");
+    return s_shaders[name];
 }

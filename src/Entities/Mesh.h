@@ -12,7 +12,6 @@ public:
     Mesh(const std::shared_ptr<Shader>& shader, aiMesh* data, aiMaterial* material);
     virtual ~Mesh();
 
-    virtual void create() override;
     virtual void draw(const std::optional<Camera>& camera = {}) override;
 
 private:

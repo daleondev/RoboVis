@@ -67,6 +67,7 @@ public:
     inline static std::optional<glm::vec3> getDraggingPosition() { return s_entityStart; }
 private:
     static void updateProjection();
+    static std::tuple<glm::vec3, glm::vec3> cameraRay(const glm::vec2& pos);
 
     // static bool onMouseScrolled(MouseScrolledEvent& e);
     // static bool onWindowResized(WindowResizeEvent& e);

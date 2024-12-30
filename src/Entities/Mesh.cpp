@@ -9,15 +9,10 @@
 Mesh::Mesh(const std::shared_ptr<Shader>& shader, aiMesh* data, aiMaterial* material)
     : Entity(shader), m_data(data), m_material(material)
 {
-
+    createBuffers();
 }
 
 Mesh::~Mesh() = default;
-
-void Mesh::create()
-{
-    createBuffers();
-}
 
 void Mesh::draw(const std::optional<Camera>& camera)
 {

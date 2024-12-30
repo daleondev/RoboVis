@@ -21,11 +21,6 @@ public:
 
 private:       
     bool onWindowClose(WindowCloseEvent& e);
-    bool onMouseLeave(MouseLeaveEvent& e);
-    bool onMouseMoved(MouseMovedEvent& e);
-    bool onMouseButtonPressed(MouseButtonPressedEvent& e);
-    bool onMouseButtonReleased(MouseButtonReleasedEvent& e);
-    bool onMouseScrolled(MouseScrolledEvent& e);
     static void handleSignal(int signal);
     
     bool m_running;

@@ -2,8 +2,7 @@
 
 #include "Window.h"
 #include "Renderer.h"
-#include "Camera.h"
-#include "Input.h"
+#include "Scene.h"
 
 #include "Entities/Marker.h"
 #include "Entities/Mesh.h"
@@ -82,36 +81,38 @@ int Application::run(int argc, char **argv)
 		return 1;
     }
 
-    ShaderLibrary shaderLib;
-    auto markerShader = shaderLib.load("/home/david/Schreibtisch/RoboVis/src/Shaders/Marker");
-    auto meshShader = shaderLib.load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh");
+    // auto markerShader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Marker");
+    // auto meshShader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh");
 
-    std::shared_ptr<Marker> marker = std::make_shared<Marker>(markerShader);
-    marker->create();
-    // marker->scale({10, 10, 10});
+    // Scene::createMarker("Marker1");
+    Scene::createMesh("Mesh1", m_scene);
 
-    std::shared_ptr<Marker> marker2 = std::make_shared<Marker>(markerShader);
-    marker2->create();
-    marker2->translate({0.0, 0.0, 5});
-    marker2->scale({0.2, 0.2, 0.2});
+    // std::shared_ptr<Marker> marker = std::make_shared<Marker>(markerShader);
+    // marker->create();
+    // // marker->scale({10, 10, 10});
 
-    std::vector<std::shared_ptr<Mesh>> meshes(m_scene->mNumMeshes);
-    for (size_t i = 0; i < meshes.size(); ++i) {
-        if (m_scene->mNumMaterials > 0 && m_scene->mMeshes[i]->mMaterialIndex < m_scene->mNumMaterials)
-            meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], m_scene->mMaterials[m_scene->mMeshes[i]->mMaterialIndex]);
-        else {
-            meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], nullptr);
-        }
-        meshes[i]->create();
-        // meshes[i]->rotate(-M_PI_2, {1.0, 0.0, 0.0});
-        // meshes[i]->rotate(M_PI_4, {0.0, 1.0, 0.0});
-    }
+    // std::shared_ptr<Marker> marker2 = std::make_shared<Marker>(markerShader);
+    // marker2->create();
+    // marker2->translate({0.0, 0.0, 5});
+    // marker2->scale({0.2, 0.2, 0.2});
 
-    m_entities.push_back(marker);
-    m_entities.push_back(marker2);
-    for (auto& mesh : meshes) {
-        m_entities.push_back(mesh);
-    }
+    // std::vector<std::shared_ptr<Mesh>> meshes(m_scene->mNumMeshes);
+    // for (size_t i = 0; i < meshes.size(); ++i) {
+    //     if (m_scene->mNumMaterials > 0 && m_scene->mMeshes[i]->mMaterialIndex < m_scene->mNumMaterials)
+    //         meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], m_scene->mMaterials[m_scene->mMeshes[i]->mMaterialIndex]);
+    //     else {
+    //         meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], nullptr);
+    //     }
+    //     meshes[i]->create();
+    //     // meshes[i]->rotate(-M_PI_2, {1.0, 0.0, 0.0});
+    //     // meshes[i]->rotate(M_PI_4, {0.0, 1.0, 0.0});
+    // }
+
+    // m_entities.push_back(marker);
+    // m_entities.push_back(marker2);
+    // for (auto& mesh : meshes) {
+    //     m_entities.push_back(mesh);
+    // }
 
     while (m_running) {
         const float time = static_cast<float>(glfwGetTime())/1000.0f;
@@ -132,131 +133,32 @@ void Application::close()
 void Application::onUpdate(const Timestep dt)
 {
     Window::onUpdate();
-    CameraController::onUpdate(dt);
-
-    auto pos = Input::GetMousePosition();
-
-    Renderer::clear({0.9f, 0.9f, 0.9f, 1.0f});
-    for (const auto& entity : m_entities) {
-
-        if (Input::isKeyPressed(GLFW_KEY_LEFT))
-            entity->rotate(-500*dt, {0.0f, 1.0f, 0.0f});
-
-        else if(Input::isKeyPressed(GLFW_KEY_RIGHT))
-            entity->rotate(500*dt, {0.0f, 1.0f, 0.0f});
-
-        if (Input::isKeyPressed(GLFW_KEY_UP))
-            entity->rotate(-500*dt, {1.0f, 0.0f, 0.0f});
-
-        else if(Input::isKeyPressed(GLFW_KEY_DOWN))
-            entity->rotate(500*dt, {1.0f, 0.0f, 0.0f});
-
-        entity->draw(CameraController::getCamera());
-    }    
+    Scene::onUpdate(dt);
 }
 
 void Application::onEvent(Event& e)
 {
     // std::cout << "Event: " << e.toString() << std::endl;
-
     EventDispatcher dispatcher(e);
 
     // Window-Event
     if (e.getCategoryFlags() & static_cast<uint8_t>(EventCategory::Window)) {
         dispatcher.dispatch<WindowCloseEvent>(BIND_EVENT_FUNCTION(onWindowClose));
+        dispatcher.dispatch<WindowResizeEvent>(Scene::onWindowResized);
     }
     // Mouse-Event
     else if (e.getCategoryFlags() & static_cast<uint8_t>(EventCategory::Mouse)) {
-        dispatcher.dispatch<MouseLeaveEvent>(BIND_EVENT_FUNCTION(onMouseLeave));
-        dispatcher.dispatch<MouseMovedEvent>(BIND_EVENT_FUNCTION(onMouseMoved));
-        dispatcher.dispatch<MouseButtonPressedEvent>(BIND_EVENT_FUNCTION(onMouseButtonPressed));
-        dispatcher.dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FUNCTION(onMouseButtonReleased));    
-        dispatcher.dispatch<MouseScrolledEvent>(BIND_EVENT_FUNCTION(onMouseScrolled));
+        dispatcher.dispatch<MouseLeaveEvent>(Scene::onMouseLeave);
+        dispatcher.dispatch<MouseMovedEvent>(Scene::onMouseMoved);
+        dispatcher.dispatch<MouseButtonPressedEvent>(Scene::onMouseButtonPressed);
+        dispatcher.dispatch<MouseButtonReleasedEvent>(Scene::onMouseButtonReleased);    
+        dispatcher.dispatch<MouseScrolledEvent>(Scene::onMouseScrolled);
     }
 }
 
 bool Application::onWindowClose(WindowCloseEvent& e)
 {   
-    // std::cout << "Closing Window" << std::endl;
     m_running = false;
-
-    return true;
-}
-
-bool Application::onMouseLeave(MouseLeaveEvent& e)
-{   
-    // std::cout << "onMouseLeave" << std::endl;
-    CameraController::stopInteraction();
-
-    return true;
-}
-
-bool Application::onMouseMoved(MouseMovedEvent& e)
-{   
-    // std::cout << "onMouseMoved " << e.toString() << std::endl;
-    if (CameraController::isDragging()) {
-        const auto pos = e.getPosition();
-        CameraController::drag({pos.first, pos.second});
-    }
-
-    return true;
-}
-
-bool Application::onMouseButtonPressed(MouseButtonPressedEvent& e)
-{
-    // std::cout << "onMouseButtonPressed" << std::endl;
-    switch(e.getMouseButton()) {
-        case GLFW_MOUSE_BUTTON_LEFT:
-        {
-            CameraController::startDraggingTrans(Input::GetMousePosition());
-            break;
-        }
-        case GLFW_MOUSE_BUTTON_RIGHT:
-        {
-            CameraController::startDraggingRot(Input::GetMousePosition(), m_scene);
-            break;
-        }
-    }
-
-    if (CameraController::isDragging())
-        if (auto pos = CameraController::getDraggingPosition(); pos) {
-            glm::mat4 t(1.0f);
-            t[0][3] = pos->x;
-            t[1][3] = pos->y;
-            t[2][3] = pos->z;
-            std::cout << pos->x << ", " << pos->y << ", " << pos->z << "\n";
-            // m_entities[0]->scale({0.1f, 0.1f, 0.1f});
-            m_entities[0]->setTranslation(*pos);
-            // m_entities[0]->scale({10.0f, 10.0f, 0.1f});
-        }
-
-    return true;
-}
-
-bool Application::onMouseButtonReleased(MouseButtonReleasedEvent& e)
-{
-    // std::cout << "onMouseButtonReleased" << std::endl;
-    switch(e.getMouseButton()) {
-        case GLFW_MOUSE_BUTTON_LEFT:
-        {
-            CameraController::stopDraggingTrans();
-            break;
-        }
-        case GLFW_MOUSE_BUTTON_RIGHT:
-        {
-            CameraController::stopDraggingRot();
-            break;
-        }
-    }
-
-    return true;
-}
-
-bool Application::onMouseScrolled(MouseScrolledEvent& e)
-{
-    // std::cout << "onMouseScrolled" << std::endl;
-    CameraController::zoom(e.getYOffset());
-
     return true;
 }
 

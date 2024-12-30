@@ -14,7 +14,6 @@ public:
     Entity(const std::shared_ptr<Shader>& shader);
     virtual ~Entity();
 
-    virtual void create() = 0;
     virtual void draw(const std::optional<Camera>& camera) = 0;
 
     void reset();

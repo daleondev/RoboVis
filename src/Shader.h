@@ -52,12 +52,13 @@ private:
 class ShaderLibrary
 {
 public:
-    void add(const std::shared_ptr<Shader>& shader);
-    std::shared_ptr<Shader> load(const std::string& filepath, const std::string& name = "");
-    std::shared_ptr<Shader> load(const std::string& name, const std::string& vertSource, const std::string& fragSource);
+    static void add(const std::shared_ptr<Shader>& shader);
+    static std::shared_ptr<Shader> load(const std::string& filepath, const std::string& name = "");
+    static std::shared_ptr<Shader> load(const std::string& name, const std::string& vertSource, const std::string& fragSource);
 
-    std::shared_ptr<Shader> get(const std::string& name);
+    static std::shared_ptr<Shader> get(const std::string& name);
+    inline static bool exists(const std::string& name) { return s_shaders.find(name) != s_shaders.end(); }
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<Shader>> m_shaders;
+    static std::unordered_map<std::string, std::shared_ptr<Shader>> s_shaders;
 };

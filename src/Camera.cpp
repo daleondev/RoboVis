@@ -181,51 +181,11 @@ void CameraController::startDraggingRot(const glm::vec2& pos, const aiScene* sce
     if (s_draggingTrans)
         return;
 
-    const float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
-    const float tangent = tanf(deg2rad(s_hFov/2.0f));
-
-    const float rightNear = s_zNear*tangent;
-    const float topNear = rightNear/aspect;
-    const float leftNear = -rightNear;
-    const float bottomNear = -topNear;
-
-    const float rightFar = s_zFar*tangent;
-    const float topFar = rightFar/aspect;
-    const float leftFar = -rightFar;
-    const float bottomFar = -topFar;
-
-    glm::vec3 near;
-    near.x = map(pos.x, 0, Window::getWidth(), leftNear, rightNear);
-    near.y = map(pos.y, 0, Window::getHeight(), topNear, bottomNear);
-    near.z = s_zNear;
-
-    glm::vec3 far;
-    far.x = map(pos.x, 0, Window::getWidth(), leftFar, rightFar);
-    far.y = map(pos.y, 0, Window::getHeight(), topFar, bottomFar);
-    far.z = s_zFar;
-
-    const auto view = s_camera.getView();
-    const glm::vec3 camPos = -view[3];
-    const glm::vec3 camZ = -view[2];
-    const glm::vec3 camY = view[1];
-    const glm::vec3 camX = view[0];
-
-    glm::vec3 camNear = camPos;
-    camNear += camX*near.x;
-    camNear += camY*near.y;
-    camNear += camZ*near.z;
-
-    glm::vec3 camFar = camPos;
-    camFar += camX*far.x;
-    camFar += camY*far.y;
-    camFar += camZ*far.z;
-
-    const glm::vec3 l0 = camNear;
-    const glm::vec3 l = camFar - camNear;
-
+    const auto&[l, l0] = cameraRay(pos);
     // std::cout << l0[0] << " "  << l0[1] << " "  << l0[2] << "\n";
     // std::cout << l[0] << " "  << l[1] << " "  << l[2] << "\n";
 
+    const glm::vec3 camPos = -s_camera.getView()[3];
     float minDist = std::numeric_limits<float>::max();
     std::optional<glm::vec3> hitPos;
     for (size_t i = 0; i < scene->mNumMeshes; ++i) {
@@ -302,4 +262,51 @@ void CameraController::updateProjection()
 
     float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
     s_camera.setProjection(glm::perspective(s_hFov, aspect, s_zNear, s_zFar));
+}
+
+std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& pos)
+{
+    const float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
+    const float tangent = tanf(deg2rad(s_hFov/2.0f));
+
+    const float rightNear = s_zNear*tangent;
+    const float topNear = rightNear/aspect;
+    const float leftNear = -rightNear;
+    const float bottomNear = -topNear;
+
+    const float rightFar = s_zFar*tangent;
+    const float topFar = rightFar/aspect;
+    const float leftFar = -rightFar;
+    const float bottomFar = -topFar;
+
+    glm::vec3 near;
+    near.x = map(pos.x, 0, Window::getWidth(), leftNear, rightNear);
+    near.y = map(pos.y, 0, Window::getHeight(), topNear, bottomNear);
+    near.z = s_zNear;
+
+    glm::vec3 far;
+    far.x = map(pos.x, 0, Window::getWidth(), leftFar, rightFar);
+    far.y = map(pos.y, 0, Window::getHeight(), topFar, bottomFar);
+    far.z = s_zFar;
+
+    const auto view = s_camera.getView();
+    const glm::vec3 camPos = -view[3];
+    const glm::vec3 camZ = -view[2];
+    const glm::vec3 camY = view[1];
+    const glm::vec3 camX = view[0];
+
+    glm::vec3 camNear = camPos;
+    camNear += camX*near.x;
+    camNear += camY*near.y;
+    camNear += camZ*near.z;
+
+    glm::vec3 camFar = camPos;
+    camFar += camX*far.x;
+    camFar += camY*far.y;
+    camFar += camZ*far.z;
+
+    const glm::vec3 l0 = camNear;
+    const glm::vec3 l = camFar - camNear;
+
+    return {l, l0};
 }

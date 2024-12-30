@@ -6,15 +6,10 @@
 Marker::Marker(const std::shared_ptr<Shader>& shader)
     : Entity(shader)
 {
-
+    createBuffers();
 }
 
 Marker::~Marker() = default;
-
-void Marker::create()
-{
-    createBuffers();
-}
 
 void Marker::draw(const std::optional<Camera>& camera)
 {

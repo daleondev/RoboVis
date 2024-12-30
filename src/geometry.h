@@ -140,6 +140,11 @@ static bool pointInTriangle(const glm::vec3& n, const glm::vec3& p0, std::array<
     return true;
 }
 
+// static std::optional<glm::vec3> rayMeshIntersection(const std::array<glm::vec3, 3>& v, const glm::vec3& l, const glm::vec3& l0)
+// {
+
+// }
+
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
