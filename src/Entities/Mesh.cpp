@@ -1,10 +1,8 @@
+#include "pch.h"
+
 #include "Mesh.h"
 
-#include <glm/gtc/type_ptr.hpp>
-
-#include <array>
-#include <iostream>
-#include <ranges>
+#include "Renderer/Renderer.h"
 
 Mesh::Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source)
     : Entity(shader)

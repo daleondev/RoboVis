@@ -1,13 +1,6 @@
+#include "pch.h"
+
 #include "Shader.h"
-
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <cassert>
 
 Shader::Shader(const std::string& name)
     : m_name(name)

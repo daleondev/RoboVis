@@ -5,14 +5,6 @@
 #include "Events/WindowEvent.h"
 #include "Events/MouseEvent.h"
 
-#include <GLES3/gl3.h>
-
-#include <glm/glm.hpp>
-
-#include <assimp/scene.h>
-
-#include <optional>
-
 class Camera {
 
 public:
@@ -67,12 +59,15 @@ public:
     inline static std::optional<glm::vec3> getDraggingPosition() { return s_dragPos; }
 private:
     static void updateProjection();
+    static std::tuple<glm::vec3, glm::vec3> screenToWorld(const glm::vec2& screenPos, const glm::mat4& camPos);
+    static std::tuple<glm::vec3, glm::vec3> screenToCam(const glm::vec2& screenPos, const glm::mat4& camPos);
     static std::tuple<glm::vec3, glm::vec3> cameraRay(const glm::vec2& screenPos, const glm::mat4& camPos);
 
     static Camera s_camera;  
     static float s_hFov;
     static float s_zNear;
     static float s_zFar;
+    static glm::mat4 s_initialTransformation;
     
     static bool s_draggingTrans;
     static bool s_draggingRot;

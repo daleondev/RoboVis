@@ -1,12 +1,5 @@
 #pragma once
 
-#include <GLES3/gl3.h>
-
-#include <vector>
-#include <cassert>
-#include <cstdint>
-#include <string_view>
-
 enum class ShaderDataType : uint8_t {
     None = 0,
     Bool,

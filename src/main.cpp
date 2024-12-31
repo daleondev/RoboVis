@@ -1,8 +1,6 @@
+#include "pch.h"
+
 #include "Application.h"
-
-#include <memory>
-
-#include "geometry.h"
 
 int main(int argc, char **argv) 
 {

@@ -1,13 +1,9 @@
 #pragma once
 
-#include "Camera.h"
-
 #include "Entities/Entity.h"
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
 #include "Events/WindowEvent.h"
-
-#include <unordered_map>
 
 class Scene
 {

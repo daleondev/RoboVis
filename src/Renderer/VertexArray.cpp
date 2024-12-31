@@ -1,6 +1,6 @@
-#include "VertexArray.h"
+#include "pch.h"
 
-#include <cassert>
+#include "VertexArray.h"
 
 static GLenum ShaderDataTypeToOpenGLBaseType(const ShaderDataType type)
 {

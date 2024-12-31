@@ -1,8 +1,10 @@
-#include "Camera.h"
+#include "pch.h"
 
-#include "Window.h"
+#include "Camera.h"
 #include "Scene.h"
-#include "Input.h"
+
+#include "Window/Window.h"
+#include "Window/Input.h"
 
 #include "Entities/Mesh.h"
 
@@ -27,19 +29,16 @@ void Camera::reset()
     m_view = glm::mat4(1.0f);
 }
 
-void Camera::setTranslation(const glm::vec3& translation)
+void Camera::setTranslation(const glm::vec3& trans)
 {
-    for (size_t i = 0; i < 3; ++i)
-        m_pos[i][3] = translation[i];
+    m_pos = setMat4Translation(m_pos, trans);
     posToView();
 }
 
 void Camera::setRotation(const float angle, const glm::vec3& axis)
 {
-    const glm::mat3 R = anlgeAxisF(angle, axis);
-    for (size_t i = 0; i < 3; ++i)
-        for (size_t j = 0; j < 3; ++j)
-            m_pos[i][j] = R[i][j];
+    const glm::mat3 rot = anlgeAxisF(angle, axis);
+    m_pos = setMat4Rotation(m_pos, rot);
     posToView();
 }
 
@@ -58,10 +57,7 @@ void Camera::translateWorld(const glm::vec3& translation)
 
 void Camera:: translateLocal(const glm::vec3& translation)
 {
-    const auto dirX = MAT_COL3(m_pos, 0);
-    const auto dirY = MAT_COL3(m_pos, 1);
-    const auto dirZ = MAT_COL3(m_pos, 2);
-    const auto t = dirX*translation.x + dirY*translation.y + dirZ*translation.z;
+    const auto t = getMat4AxisX(m_pos)*translation.x + getMat4AxisY(m_pos)*translation.y + getMat4AxisZ(m_pos)*translation.z;
     for (size_t i = 0; i < 3; ++i)
         m_pos[i][3] += t[i];
     posToView();
@@ -101,6 +97,7 @@ Camera CameraController::s_camera;
 float CameraController::s_hFov;
 float CameraController::s_zFar;
 float CameraController::s_zNear;
+glm::mat4 CameraController::s_initialTransformation;
 
 bool CameraController::s_draggingTrans;
 bool CameraController::s_draggingRot;
@@ -113,6 +110,7 @@ void CameraController::init(const float hFov, const float zNear, const float zFa
     s_hFov = hFov;
     s_zNear = zNear;
     s_zFar = zFar;
+    s_initialTransformation = initialTransformation;
 
     s_draggingTrans = false;
     s_draggingRot = false;
@@ -204,6 +202,18 @@ void CameraController::startDraggingRot(const glm::vec2& screenPos)
     s_screenPosPrev = screenPos;
     s_camPosPrev = s_camera.getPosition();
     s_dragPos = hitPos && !glm::any(glm::isnan(*hitPos)) ? *hitPos : glm::vec3(0.0f);
+
+    // auto[cam, _1] = CameraController::screenToCam(s_screenPosPrev, s_camPosPrev);
+    // auto[world, _2] = CameraController::screenToWorld(s_screenPosPrev, s_camPosPrev);    
+    // // auto[l, l0] = CameraController::cameraRay(s_screenPosPrev, s_camPosPrev); 
+    // printVec(cam);
+    // printVec(world);
+    
+    
+    // auto dist = glm::length(*s_dragPos - getMat4Translation(s_camPosPrev));
+    // auto worldt = getMat4Translation(s_camPosPrev) + dist*l;
+    // printVec(worldt);
+    // std::cout << "-----------------\n";
 }
 
 void CameraController::stopDraggingRot()
@@ -217,9 +227,8 @@ void CameraController::drag(const glm::vec2& screenPos)
     const auto camPos = s_camera.getPosition();
 
     if (glm::any(glm::isnan(camPos[0])) || glm::any(glm::isnan(camPos[1])) || glm::any(glm::isnan(camPos[2])) || glm::any(glm::isnan(camPos[3]))) {
-        stopDraggingTrans();
-        stopDraggingRot();
-        s_camera.reset();
+        stopInteraction();
+        s_camera.setTransformation(s_initialTransformation);
         return;
     }
 
@@ -233,21 +242,27 @@ void CameraController::drag(const glm::vec2& screenPos)
     else if (s_draggingRot) {       
         const auto angle = -deg2rad(s_rotFactor*glm::length(screenPos - s_screenPosPrev));
 
-        auto camOrig = MAT_COL3(camPos, 3);
-        auto camDirZ = MAT_COL3(camPos, 2);
-        auto camDirY = MAT_COL3(camPos, 1);
-        auto camDirX = MAT_COL3(camPos, 0);
-       
-        auto screenPrev = s_screenPosPrev; screenPrev.y = Window::getHeight()-screenPrev.y;
-        auto screenCurr = screenPos; screenCurr.y = Window::getHeight()-screenCurr.y;
-        auto[_1, prev] = CameraController::cameraRay(screenPrev, s_camPosPrev);
-        auto[_2, curr] = CameraController::cameraRay(screenCurr, camPos);
+        const auto camOrig = getMat4Translation(camPos);
+        const auto camAxisZ = getMat4AxisZ(camPos);
 
-        const auto dragDir = glm::normalize(curr - prev);
-        const auto axis = cross(dragDir, camDirZ);
-        const auto rot = anlgeAxisF(angle, axis);
         const auto camToDrag = *s_dragPos - camOrig;
         const auto camToDragLocal = glm::inverseTranspose(camPos) * glm::vec4(camToDrag, 0.0f);
+        const auto distCamToDrag = glm::length(camToDrag);
+
+        auto screenPrev = s_screenPosPrev; screenPrev.y = Window::getHeight()-screenPrev.y;
+        auto screenCurr = screenPos; screenCurr.y = Window::getHeight()-screenCurr.y;
+
+        const auto[lPrev, l0Prev] = CameraController::cameraRay(screenPrev, s_camPosPrev);
+        const auto prev = getMat4Translation(s_camPosPrev) + glm::length(*s_dragPos-getMat4Translation(s_camPosPrev))*lPrev;
+        const auto[lCurr, l0PCurr] = CameraController::cameraRay(screenCurr, camPos);
+        const auto curr = camOrig + distCamToDrag*lCurr;
+
+        // auto[prev, _1] = CameraController::screenToWorld(screenPrev, s_camPosPrev);
+        // auto[curr, _2] = CameraController::screenToWorld(screenCurr, camPos);
+
+        const auto dragDir = glm::normalize(curr - prev);
+        const auto axis = cross(dragDir, camAxisZ);
+        const auto rot = anlgeAxisF(angle, axis);
 
         s_camera.translateLocal(camToDragLocal);
         s_camera.rotate(rot);
@@ -272,7 +287,29 @@ void CameraController::updateProjection()
     s_camera.setProjection(glm::perspective(s_hFov, aspect, s_zNear, s_zFar));
 }
 
-std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& screenPos, const glm::mat4& camPos)
+std::tuple<glm::vec3, glm::vec3> CameraController::screenToWorld(const glm::vec2& screenPos, const glm::mat4& camPos)
+{
+    const auto[camNear, camFar] = screenToCam(screenPos, camPos);
+
+    const glm::vec3 camOrig = getMat4Translation(camPos);
+    const glm::vec3 camAxisZ = getMat4AxisZ(camPos);
+    const glm::vec3 camAxisY = getMat4AxisY(camPos);
+    const glm::vec3 camAxisX = getMat4AxisX(camPos);
+
+    glm::vec3 near = camOrig;
+    near += camAxisX*camNear.x;
+    near += camAxisY*camNear.y;
+    near += camAxisZ*camNear.z;
+
+    glm::vec3 far = camOrig;
+    far += camAxisX*camFar.x;
+    far += camAxisY*camFar.y;
+    far += camAxisZ*camFar.z;
+
+    return {near, far};
+}
+
+std::tuple<glm::vec3, glm::vec3> CameraController::screenToCam(const glm::vec2& screenPos, const glm::mat4& camPos)
 {
     const float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
     const float tangent = tanf(deg2rad(s_hFov/2.0f));
@@ -288,32 +325,24 @@ std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& sc
     const float bottomFar = -topFar;
 
     glm::vec3 near;
-    near.x = map(screenPos.x, 0, Window::getWidth(), leftNear, rightNear);
+    near.x = -map(screenPos.x, 0, Window::getWidth(), leftNear, rightNear);
     near.y = map(screenPos.y, 0, Window::getHeight(), topNear, bottomNear);
     near.z = s_zNear;
 
     glm::vec3 far;
-    far.x = map(screenPos.x, 0, Window::getWidth(), leftFar, rightFar);
+    far.x = -map(screenPos.x, 0, Window::getWidth(), leftFar, rightFar);
     far.y = map(screenPos.y, 0, Window::getHeight(), topFar, bottomFar);
     far.z = s_zFar;
 
-    const glm::vec3 camOrig = MAT_COL3(camPos, 3);
-    const glm::vec3 camDirZ = MAT_COL3(camPos, 2);
-    const glm::vec3 camDirY = MAT_COL3(camPos, 1);
-    const glm::vec3 camDirX = -MAT_COL3(camPos, 0);
+    return {near, far};
+}
 
-    glm::vec3 camNear = camOrig;
-    camNear += camDirX*near.x;
-    camNear += camDirY*near.y;
-    camNear += camDirZ*near.z;
+std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& screenPos, const glm::mat4& camPos)
+{
+    const auto[near, far] = screenToWorld(screenPos, camPos);
 
-    glm::vec3 camFar = camOrig;
-    camFar += camDirX*far.x;
-    camFar += camDirY*far.y;
-    camFar += camDirZ*far.z;
-
-    const glm::vec3 l0 = camNear;
-    const glm::vec3 l = glm::normalize(camFar - camNear);
+    const glm::vec3 l0 = near;
+    const glm::vec3 l = glm::normalize(far - near);
 
     return {l, l0};
 }

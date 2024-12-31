@@ -1,25 +1,13 @@
+#include "pch.h"
+
 #include "Application.h"
 
-#include "Window.h"
-#include "Renderer.h"
 #include "Scene.h"
+
+#include "Window/Window.h"
 
 #include "Entities/Marker.h"
 #include "Entities/Mesh.h"
-
-#include <GLFW/glfw3.h>
-
-#include <glm/gtc/matrix_transform.hpp>
-
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-
-#include <cassert>
-#include <csignal>
-#include <iostream>
-
-#include "geometry.h"
 
 Application* Application::s_instance = nullptr;
 
@@ -65,7 +53,7 @@ int Application::run(int argc, char **argv)
     std::cout << "Starting Application" << std::endl;
 
     if (argc != 2) {
-		std::cerr << "No input model file specified." << std::endl;
+		std::cerr << "No robot model file specified." << std::endl;
 		return 1;
 	}
 
@@ -87,7 +75,7 @@ int Application::run(int argc, char **argv)
 
     std::shared_ptr<Entity> marker = Scene::createMarker("DragMarker");
     marker->scale({10.0f, 10.0f, 10.0f});
-    marker->setVisible(false);
+    // marker->setVisible(false);
     // Scene::createMesh("Mesh1", m_scene);
 
     // std::shared_ptr<Marker> marker = std::make_shared<Marker>(markerShader);

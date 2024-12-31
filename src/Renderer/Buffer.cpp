@@ -1,3 +1,5 @@
+#include "pch.h"
+
 #include "Buffer.h"
 
 VertexBuffer::VertexBuffer()

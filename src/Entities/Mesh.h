@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Entity.h"
-#include "Camera.h"
 
-#include <assimp/scene.h>
+#include "Renderer/VertexArray.h"
 
 struct MeshData
 {

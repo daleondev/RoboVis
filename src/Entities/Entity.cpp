@@ -1,8 +1,6 @@
-#include "Entity.h"
+#include "pch.h"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/quaternion.hpp>
+#include "Entity.h"
 
 Entity::Entity(const std::shared_ptr<Shader>& shader)
     : m_shader(shader), m_model(1.0f), m_visible(true)

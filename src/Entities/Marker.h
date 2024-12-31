@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Entity.h"
-#include "Camera.h"
+
+#include "Renderer/VertexArray.h"
 
 class Marker : public Entity {
 

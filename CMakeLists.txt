@@ -42,6 +42,9 @@ set(LIBS glm glfw GLESv2 assimp)
 # set defines
 set(DEFINES GLFW_INCLUDE_ES3)
 
+# set precompiled header file
+set(PCH ${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h)
+
 # set compile options
 set(OPTIONS 
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
@@ -55,16 +58,19 @@ set(OPTIONS
 add_executable(RoboVis ${SOURCES} ${HEADERS})
 
 # defines
-target_compile_definitions(RoboVis PUBLIC ${DEFINES})
+target_compile_definitions(RoboVis PRIVATE ${DEFINES})
 
 # include directories
-target_include_directories(RoboVis PUBLIC ${INCLUDES})
+target_include_directories(RoboVis PRIVATE ${INCLUDES})
 
 # linked libraries
-target_link_libraries(RoboVis PUBLIC ${LIBS}) 
+target_link_libraries(RoboVis PRIVATE ${LIBS}) 
 
 # compile options
 target_compile_options(RoboVis PRIVATE ${OPTIONS})
+
+# precompiled headers
+target_precompile_headers(RoboVis PRIVATE ${PCH})
 
 # runtime library
 if(MSVC)

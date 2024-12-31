@@ -1,9 +1,5 @@
 #pragma once
 
-#include <fstream>
-#include <string>
-#include <vector>
-
 std::string readFile(const std::string& fileName)
 {
     // open file

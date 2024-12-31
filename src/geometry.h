@@ -1,17 +1,10 @@
 #pragma once
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtc/epsilon.hpp>
-
-#include <tuple>
-#include <optional>
-#include <iostream>
-
-#define MAT_ROW3(mat, row) glm::vec3(mat[row][0], mat[row][1], mat[row][2])
-#define MAT_COL3(mat, col) glm::vec3(mat[0][col], mat[1][col], mat[2][col])
+#define MAT_ROW3(mat, row)  glm::vec3(  mat[row][0], mat[row][1], mat[row][2])
+#define MAT_COL3(mat, col)  glm::vec3(  mat[0][col], mat[1][col], mat[2][col])
+#define MAT3(mat, row, col) glm::mat3(  mat[row+0][col+0], mat[row+0][col+1], mat[row+0][col+2],\
+                                        mat[row+1][col+0], mat[row+1][col+1], mat[row+1][col+2],\
+                                        mat[row+2][col+0], mat[row+2][col+1], mat[row+2][col+2])
 
 static float deg2rad(const float deg) 
 {
@@ -154,21 +147,63 @@ static bool pointInTriangle(const glm::vec3& n, const glm::vec3& p0, std::array<
 
 static glm::mat3 anlgeAxisF(const float angle, const glm::vec3& axis)
 {
-    auto u = glm::normalize(axis);
-    const auto c = cosf(angle);
-    const auto s = sinf(angle);
+    // auto u = glm::normalize(axis);
+    // const auto c = cosf(angle);
+    // const auto s = sinf(angle);
 
-    const auto t1 = 1-c;
-    return glm::mat3(
-        glm::vec3(c + u[0]*u[0]*t1, u[0]*u[1]*t1 - u[2]*s, u[0]*u[2]*t1 + u[1]*s),
-        glm::vec3(u[1]*u[0]*t1 + u[2]*s, c + u[1]*u[1]*t1, u[1]*u[2]*t1 - u[0]*s),
-        glm::vec3(u[2]*u[0]*t1 - u[1]*s, u[2]*u[1]*t1 + u[0]*s, c + u[2]*u[2]*t1)
-    );
+    // const auto t1 = 1-c;
+    // return glm::mat3(
+    //     glm::vec3(c + u[0]*u[0]*t1, u[0]*u[1]*t1 - u[2]*s, u[0]*u[2]*t1 + u[1]*s),
+    //     glm::vec3(u[1]*u[0]*t1 + u[2]*s, c + u[1]*u[1]*t1, u[1]*u[2]*t1 - u[0]*s),
+    //     glm::vec3(u[2]*u[0]*t1 - u[1]*s, u[2]*u[1]*t1 + u[0]*s, c + u[2]*u[2]*t1)
+    // );
+    return glm::transpose(glm::toMat3(glm::angleAxis(angle, axis)));
 }
 
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
 {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+static glm::mat4 setMat4Translation(glm::mat4 mat, const glm::vec3& trans)
+{
+    for (size_t i = 0; i < 3; ++i)
+        mat[i][3] = trans[i];
+    return mat;
+}
+
+static glm::mat4 setMat4Rotation(glm::mat4 mat, const glm::mat3& rot)
+{
+    for (size_t i = 0; i < 3; ++i)
+        for (size_t j = 0; j < 3; ++j)
+            mat[i][j] = rot[i][j];
+    return mat;
+}
+
+
+static glm::vec3 getMat4Translation(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 3);
+}
+
+static glm::vec3 getMat4AxisZ(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 2);
+}
+
+static glm::vec3 getMat4AxisY(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 1);
+}
+
+static glm::vec3 getMat4AxisX(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 0);
+}
+
+static glm::mat3 getMat4Rotation(const glm::mat4& mat)
+{
+    return MAT3(mat, 0, 0);
 }
 
 static void printMat(const glm::mat4& mat)
@@ -186,55 +221,4 @@ static void printVec(const glm::vec3& vec)
         std::cout << vec[i] << "\t";
     }
     std::cout << "\n";
-}
-
-static glm::mat3 findSubMatrix(glm::mat4 mat, int rowNum, int colNum)
-{
-	glm::mat3 subMatrix;
-	
-    int x=0;
-	for (int i=0; i<4; ++i)
-	{        
-        if (i == rowNum)
-            continue;
-            
-        int y = 0;
-		for (int j=0; j<4; ++j)
-		{
-            if (j == colNum)
-                continue;
-            subMatrix[x][y++] = mat[i][j];
-		}
-        x++;
-	}
-	
-	return subMatrix;
-}
-
-static glm::mat4 inverseMat(glm::mat4 mat)
-{
-	glm::mat4 adjugate;
-	
-	int sign = 1;
-	int rowSign = 1;
-	for (int row=0; row<4; ++row)
-	{
-		for (int col=0; col<4; ++col)
-		{
-			auto subMatrix = findSubMatrix(mat, row, col);
-			auto subMatrixDeterminant = glm::determinant(subMatrix);
-			adjugate[row][col] = sign * subMatrixDeterminant;
-			sign *= -1;
-		}
-		rowSign *= -1;
-		sign = rowSign;
-	}
-	
-	auto adjT = glm::transpose(adjugate);
-	
-	// Compute the inverse.
-	auto determinant = glm::determinant(mat);
-    assert(fabs(determinant) > 1e-9);
-
-	return (1.0f / determinant) * adjT;
 }

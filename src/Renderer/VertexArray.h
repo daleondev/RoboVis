@@ -2,11 +2,6 @@
 
 #include "Buffer.h"
 
-#include <GLES3/gl3.h>
-
-#include <memory>
-#include <vector>
-
 class VertexArray 
 {
 public:

@@ -1,22 +1,23 @@
+#include "pch.h"
+
 #include "Scene.h"
 
-#include "Input.h"
+#include "geometry.h"
+
+#include "Window/Input.h"
+
+#include "Renderer/Renderer.h"
 
 #include "Entities/Marker.h"
 #include "Entities/Mesh.h"
-
-#include <GLFW/glfw3.h>
-
-#include <iostream>
-#include "geometry.h"
 
 std::unordered_map<std::string, std::shared_ptr<Entity>> Scene::s_entities;
 
 void Scene::init()
 {
     glm::mat4 t(1.0f);
-    t = glm::toMat4(glm::angleAxis(M_PIf32, glm::vec3(0.0f, 1.0f, 0.0f)));
-    t[2][3] = 20.0f;
+    t = anlgeAxisF(-M_PIf32/2, glm::vec3(0.0f, 1.0f, 0.0f));
+    t[0][3] = 20.0f;
     CameraController::init(70.0f, 0.3f, 1000.0f, t);
     Renderer::init();
 }
@@ -130,7 +131,6 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
             auto marker = getEntity("DragMarker");
             marker->setTranslation(*pos);
             marker->setVisible(true);
-            std::cout << pos->x << ", "  << pos->y << ", " << pos->z << "\n";
         }
 
     return true;
@@ -149,7 +149,7 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
         {
             CameraController::stopDraggingRot();
             if (entityExists("DragMarker"))
-                getEntity("DragMarker")->setVisible(false);
+                // getEntity("DragMarker")->setVisible(false);
             break;
         }
     }

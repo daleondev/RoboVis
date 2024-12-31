@@ -1,10 +1,7 @@
 #pragma once
 
-#include "Renderer.h"
-#include "Buffer.h"
-#include "Camera.h"
-
-#include <optional>
+#include "Renderer/Shader.h"
+#include "Renderer/Camera.h"
 
 class Camera;
 
@@ -28,6 +25,9 @@ public:
 
     inline bool isVisible() const { return m_visible; }
     inline void setVisible(const bool visible) { m_visible = visible; }
+
+    inline glm::mat4 getModel() const { return m_model; }
+    inline glm::mat4 getPos() const { return getModel(); }
 
 protected:
     virtual void createBuffers() = 0;

@@ -1,7 +1,8 @@
+#include "pch.h"
+
 #include "Marker.h"
 
-#include <array>
-#include <iostream>
+#include "Renderer/Renderer.h"
 
 Marker::Marker(const std::shared_ptr<Shader>& shader)
     : Entity(shader)
