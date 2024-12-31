@@ -15,13 +15,13 @@ public:
 
     void reset();
 
-    void setTranslation(const glm::vec3& translation);
-    void setRotation(const float angle, const glm::vec3& axis);
-    void setTransformation(const glm::mat4& transformation);
+    void setTranslation(const glm::vec3& p_world);
+    void setRotation(const float angle, const glm::vec3& l_axis_world);
+    void setTransformation(const glm::mat4& t_cam_world);
 
-    void translateWorld(const glm::vec3& translation);
-    void translateLocal(const glm::vec3& translation);
-    void rotate(const float angle, const glm::vec3& axis);
+    void translateWorld(const glm::vec3& l_world);
+    void translate(const glm::vec3& l_cam);
+    void rotate(const float angle, const glm::vec3& l_axis_cam);
     void rotate(const glm::mat3& R);
     void transform(const glm::mat4& transformation);  
     void reorthogonalize();
@@ -41,17 +41,17 @@ private:
 class CameraController 
 {
 public:
-    static void init(const float hFov, const float zNear = 0.3f, const float zFar = 1000.0f, const glm::mat4& initialTransformation = glm::mat4(1.0f));
+    static void init(const float hFov, const float zNear = 0.3f, const float zFar = 1000.0f, const glm::mat4& t_camInit_world = glm::mat4(1.0f));
 
     static void onUpdate(const Timestep ts);
     static void onResize();
 
     static void stopInteraction();
-    static void startDraggingTrans(const glm::vec2& screenPos);
+    static void startDraggingTrans(const glm::vec2& p_mouse_screen);
     static void stopDraggingTrans();
-    static void startDraggingRot(const glm::vec2& screenPos);
+    static void startDraggingRot(const glm::vec2& p_mouse_screen);
     static void stopDraggingRot();
-    static void drag(const glm::vec2& screenPos);
+    static void drag(const glm::vec2& p_mouse_screen);
     static void zoom(const float factor);
 
     inline static Camera& getCamera() { return s_camera; }
@@ -59,9 +59,9 @@ public:
     inline static std::optional<glm::vec3> getDraggingPosition() { return s_dragPos; }
 private:
     static void updateProjection();
-    static std::tuple<glm::vec3, glm::vec3> screenToWorld(const glm::vec2& screenPos, const glm::mat4& camPos);
-    static std::tuple<glm::vec3, glm::vec3> screenToCam(const glm::vec2& screenPos, const glm::mat4& camPos);
-    static std::tuple<glm::vec3, glm::vec3> cameraRay(const glm::vec2& screenPos, const glm::mat4& camPos);
+    static std::tuple<glm::vec3, glm::vec3> screenToWorld(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world);
+    static std::tuple<glm::vec3, glm::vec3> screenToCam(const glm::vec2& p_mouse_screen);
+    static std::tuple<glm::vec3, glm::vec3> cameraRay(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world);
 
     static Camera s_camera;  
     static float s_hFov;

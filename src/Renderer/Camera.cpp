@@ -29,66 +29,64 @@ void Camera::reset()
     m_view = glm::mat4(1.0f);
 }
 
-void Camera::setTranslation(const glm::vec3& trans)
+void Camera::setTranslation(const glm::vec3& p_world)
 {
-    m_pos = setMat4Translation(m_pos, trans);
+    m_pos = setMat4Translation(m_pos, p_world);
     posToView();
 }
 
-void Camera::setRotation(const float angle, const glm::vec3& axis)
+void Camera::setRotation(const float angle, const glm::vec3& l_axis_world)
 {
-    const glm::mat3 rot = anlgeAxisF(angle, axis);
-    m_pos = setMat4Rotation(m_pos, rot);
+    const glm::mat3 r_world = anlgeAxisF(angle, l_axis_world);
+    m_pos = setMat4Rotation(m_pos, r_world);
     posToView();
 }
 
-void Camera::setTransformation(const glm::mat4& transformation)
+void Camera::setTransformation(const glm::mat4& t_cam_world)
 {
-    m_pos = transformation;
+    m_pos = t_cam_world;
     posToView();
 }
 
-void Camera::translateWorld(const glm::vec3& translation)
+void Camera::translateWorld(const glm::vec3& l_world)
 {
     for (size_t i = 0; i < 3; ++i)
-        m_pos[i][3] += translation[i];
+        m_pos[i][3] += l_world[i];
     posToView();
 }
 
-void Camera:: translateLocal(const glm::vec3& translation)
+void Camera:: translate(const glm::vec3& l_cam)
 {
-    const auto t = getMat4AxisX(m_pos)*translation.x + getMat4AxisY(m_pos)*translation.y + getMat4AxisZ(m_pos)*translation.z;
-    for (size_t i = 0; i < 3; ++i)
-        m_pos[i][3] += t[i];
+    const auto l_world = getMat4AxisX(m_pos)*l_cam.x + getMat4AxisY(m_pos)*l_cam.y + getMat4AxisZ(m_pos)*l_cam.z;
+    translateWorld(l_world);
+}
+
+void Camera::rotate(const float angle, const glm::vec3& l_axis_cam)
+{
+    const auto r_cam = anlgeAxisF(angle, l_axis_cam);
+    m_pos = glm::mat4(r_cam) * m_pos;
     posToView();
 }
 
-void Camera::rotate(const float angle, const glm::vec3& axis)
+void Camera::rotate(const glm::mat3& r_cam)
 {
-    auto R = anlgeAxisF(angle, axis);
-    m_pos = glm::mat4(R) * m_pos;
+    m_pos = glm::mat4(r_cam) * m_pos;
     posToView();
 }
 
-void Camera::rotate(const glm::mat3& R)
+void Camera::transform(const glm::mat4& t_cam)
 {
-    m_pos = glm::mat4(R) * m_pos;
-    posToView();
-}
-
-void Camera::transform(const glm::mat4& transformation)
-{
-    m_pos = transformation * m_pos;
+    m_pos = t_cam * m_pos;
     posToView();
 }
 
 void Camera::posToView()
 {
-    const auto trans = MAT_COL3(m_pos, 3);
-    const auto dirZ = MAT_COL3(m_pos, 2);
-    const auto dirY = MAT_COL3(m_pos, 1);
-    const auto target = trans + dirZ;
-    m_view = glm::lookAt(trans, target, dirY);;
+    const auto p_cam_world = MAT_COL3(m_pos, 3);
+    const auto l_camZ_world = MAT_COL3(m_pos, 2);
+    const auto l_camY_world = MAT_COL3(m_pos, 1);
+    const auto p_target_world = p_cam_world + l_camZ_world;
+    m_view = glm::lookAt(p_cam_world, p_target_world, l_camY_world);;
 }
 
 // ------------------------------------------------
@@ -105,17 +103,17 @@ glm::vec2 CameraController::s_screenPosPrev;
 glm::mat4 CameraController::s_camPosPrev;
 std::optional<glm::vec3> CameraController::s_dragPos;
 
-void CameraController::init(const float hFov, const float zNear, const float zFar, const glm::mat4& initialTransformation)
+void CameraController::init(const float hFov, const float zNear, const float zFar, const glm::mat4& t_camInit_world)
 {
     s_hFov = hFov;
     s_zNear = zNear;
     s_zFar = zFar;
-    s_initialTransformation = initialTransformation;
+    s_initialTransformation = t_camInit_world;
 
     s_draggingTrans = false;
     s_draggingRot = false;
 
-    s_camera.setTransformation(initialTransformation);
+    s_camera.setTransformation(t_camInit_world);
     updateProjection();
 }
 
@@ -145,13 +143,13 @@ void CameraController::stopInteraction()
     stopDraggingRot();
 }
 
-void CameraController::startDraggingTrans(const glm::vec2& screenPos)
+void CameraController::startDraggingTrans(const glm::vec2& p_mouse_screen)
 {
     if (s_draggingRot)
         return;
 
     s_draggingTrans = true;
-    s_screenPosPrev = screenPos;
+    s_screenPosPrev = p_mouse_screen;
     s_camPosPrev = s_camera.getView();
     s_dragPos = {};
 }
@@ -161,34 +159,34 @@ void CameraController::stopDraggingTrans()
     s_draggingTrans = false;
 }
 
-void CameraController::startDraggingRot(const glm::vec2& screenPos)
+void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
 {
     if (s_draggingTrans)
         return;
 
-    const glm::mat4 camPos = s_camera.getPosition();
-    const glm::vec3 camOrig = -MAT_COL3(camPos, 3);
-    const auto&[l, l0] = cameraRay(screenPos, camPos);
+    const glm::mat4 t_cam_world = s_camera.getPosition();
+    const glm::vec3 p_cam_world = -MAT_COL3(t_cam_world, 3);
+    const auto&[l_ray_world, p_ray_world] = cameraRay(p_mouse_screen, t_cam_world);
     
     float minDist = std::numeric_limits<float>::max();
-    std::optional<glm::vec3> hitPos;
+    std::optional<glm::vec3> p_hit_world;
     for (auto&[name, entity] : Scene::getEntities()) {
         if(Mesh* mesh = dynamic_cast<Mesh*>(entity.get()); mesh != nullptr) {
             const auto& meshData = mesh->getData();
 
             for (const auto& data : meshData) {
                 for (const auto& indices : data.indices) {
-                    std::array<glm::vec3, 3> v;
+                    std::array<glm::vec3, 3> p_vertices_world;
                     for (size_t i = 0; i < 3; ++i)
-                        v[i] = data.vertices[indices[i]].pos;
+                        p_vertices_world[i] = data.vertices[indices[i]].pos;
 
-                    const auto&[n, p0] = trianglePlane(v);
-                    const auto p = intersectionLinePlane(n, p0, l, l0);
-                    if (p) {
-                        if(pointInTriangle(n, p0, v, *p)) {
-                            const float dist = glm::length(*p - camOrig);
-                            if (!hitPos || dist < minDist) {
-                                hitPos = *p;
+                    const auto&[l_n_world, l_p0_world] = trianglePlane(p_vertices_world);
+                    const auto p_hitTmp_world = intersectionLinePlane(l_n_world, l_p0_world, l_ray_world, p_ray_world);
+                    if (p_hitTmp_world) {
+                        if(pointInTriangle(l_n_world, l_p0_world, p_vertices_world, *p_hitTmp_world)) {
+                            const float dist = glm::length(*p_hitTmp_world - p_cam_world);
+                            if (!p_hit_world || dist < minDist) {
+                                p_hit_world = *p_hitTmp_world;
                                 minDist = dist;
                             }
                         }
@@ -199,21 +197,9 @@ void CameraController::startDraggingRot(const glm::vec2& screenPos)
     }
 
     s_draggingRot = true;
-    s_screenPosPrev = screenPos;
-    s_camPosPrev = s_camera.getPosition();
-    s_dragPos = hitPos && !glm::any(glm::isnan(*hitPos)) ? *hitPos : glm::vec3(0.0f);
-
-    // auto[cam, _1] = CameraController::screenToCam(s_screenPosPrev, s_camPosPrev);
-    // auto[world, _2] = CameraController::screenToWorld(s_screenPosPrev, s_camPosPrev);    
-    // // auto[l, l0] = CameraController::cameraRay(s_screenPosPrev, s_camPosPrev); 
-    // printVec(cam);
-    // printVec(world);
-    
-    
-    // auto dist = glm::length(*s_dragPos - getMat4Translation(s_camPosPrev));
-    // auto worldt = getMat4Translation(s_camPosPrev) + dist*l;
-    // printVec(worldt);
-    // std::cout << "-----------------\n";
+    s_screenPosPrev = p_mouse_screen;
+    s_camPosPrev = t_cam_world;
+    s_dragPos = p_hit_world && !glm::any(glm::isnan(*p_hit_world)) ? *p_hit_world : glm::vec3(0.0f);
 }
 
 void CameraController::stopDraggingRot()
@@ -222,61 +208,61 @@ void CameraController::stopDraggingRot()
     s_draggingRot = false;
 }
 
-void CameraController::drag(const glm::vec2& screenPos)
+void CameraController::drag(const glm::vec2& p_mouse_screen)
 {
-    const auto camPos = s_camera.getPosition();
+    const auto t_cam_world = s_camera.getPosition();
 
-    if (glm::any(glm::isnan(camPos[0])) || glm::any(glm::isnan(camPos[1])) || glm::any(glm::isnan(camPos[2])) || glm::any(glm::isnan(camPos[3]))) {
+    if (glm::any(glm::isnan(t_cam_world[0])) || glm::any(glm::isnan(t_cam_world[1])) || glm::any(glm::isnan(t_cam_world[2])) || glm::any(glm::isnan(t_cam_world[3]))) {
         stopInteraction();
         s_camera.setTransformation(s_initialTransformation);
         return;
     }
 
     if (s_draggingTrans) {
-        const glm::vec2 v = -s_dragFactor*(screenPos - s_screenPosPrev);
-        s_camera.translateLocal(glm::vec3(v.x, v.y, 0.0));
+        const glm::vec2 v = -s_dragFactor*(p_mouse_screen - s_screenPosPrev);
+        s_camera.translate(glm::vec3(v.x, v.y, 0.0));
         s_camPosPrev = s_camera.getPosition();
-        s_screenPosPrev = screenPos;
+        s_screenPosPrev = p_mouse_screen;
     }
 
     else if (s_draggingRot) {       
-        const auto angle = -deg2rad(s_rotFactor*glm::length(screenPos - s_screenPosPrev));
+        const auto angle = -deg2rad(s_rotFactor*glm::length(p_mouse_screen - s_screenPosPrev));
 
-        const auto camOrig = getMat4Translation(camPos);
-        const auto camAxisZ = getMat4AxisZ(camPos);
+        const auto p_drag_world = *s_dragPos;
+        const auto p_cam_world = getMat4Translation(t_cam_world);
+        const auto l_camZ_world = getMat4AxisZ(t_cam_world);
 
-        const auto camToDrag = *s_dragPos - camOrig;
-        const auto camToDragLocal = glm::inverseTranspose(camPos) * glm::vec4(camToDrag, 0.0f);
-        const auto distCamToDrag = glm::length(camToDrag);
+        const auto t_world_cam = glm::inverseTranspose(t_cam_world);
+        const auto l_camToDrag_world = p_drag_world - p_cam_world;
+        const auto l_camToDrag_cam = t_world_cam * glm::vec4(l_camToDrag_world, 0.0f);
 
-        auto screenPrev = s_screenPosPrev; screenPrev.y = Window::getHeight()-screenPrev.y;
-        auto screenCurr = screenPos; screenCurr.y = Window::getHeight()-screenCurr.y;
+        const auto[l_rayPrev_world, p_rayPrev_world] = CameraController::cameraRay(s_screenPosPrev, s_camPosPrev);
+        const auto p_prev_world = *intersectionLinePlane(getMat4AxisZ(s_camPosPrev), p_drag_world, l_rayPrev_world, p_rayPrev_world);
+        const auto[l_rayCurr_world, p_rayCurr_world] = CameraController::cameraRay(p_mouse_screen, t_cam_world);
+        const auto p_curr_world = *intersectionLinePlane(l_camZ_world, p_drag_world, l_rayCurr_world, p_rayCurr_world);
 
-        const auto[lPrev, l0Prev] = CameraController::cameraRay(screenPrev, s_camPosPrev);
-        const auto prev = getMat4Translation(s_camPosPrev) + glm::length(*s_dragPos-getMat4Translation(s_camPosPrev))*lPrev;
-        const auto[lCurr, l0PCurr] = CameraController::cameraRay(screenCurr, camPos);
-        const auto curr = camOrig + distCamToDrag*lCurr;
+        const auto l_drag_world = glm::normalize(p_curr_world - p_prev_world);
+        const auto l_axis_world = glm::cross(l_drag_world, l_camZ_world);
+        const auto l_axis_cam = t_world_cam * glm::vec4(l_axis_world, 0.0f);
+        const auto r_drag_cam = anlgeAxisF(angle, l_axis_cam);
 
-        // auto[prev, _1] = CameraController::screenToWorld(screenPrev, s_camPosPrev);
-        // auto[curr, _2] = CameraController::screenToWorld(screenCurr, camPos);
-
-        const auto dragDir = glm::normalize(curr - prev);
-        const auto axis = cross(dragDir, camAxisZ);
-        const auto rot = anlgeAxisF(angle, axis);
-
-        s_camera.translateLocal(camToDragLocal);
-        s_camera.rotate(rot);
-        s_camera.translateLocal(-camToDragLocal);
+        s_camera.translate(l_camToDrag_cam);
+        s_camera.rotate(r_drag_cam);
+        s_camera.translate(-l_camToDrag_cam);
 
         s_camPosPrev = s_camera.getPosition();
-        s_screenPosPrev = screenPos;
+        s_screenPosPrev = p_mouse_screen;
     }
 }
 
 void CameraController::zoom(const float factor)
 {
-    auto[l, l0] = cameraRay(Input::GetMousePosition(), s_camera.getPosition());
-    s_camera.translateWorld(factor*s_scrollFactor*l);
+    const auto[l_ray_world, p_ray_world] = cameraRay(Input::GetMousePosition(), s_camera.getPosition());
+    // const auto t_cam_world = s_camera.getPosition();
+    // const auto t_world_cam = glm::inverseTranspose(t_cam_world);
+    // const auto l_ray_cam = t_world_cam * glm::vec4(l_ray_world, 0.0f);
+    // printVec(l_ray_world);
+    s_camera.translateWorld(factor*s_scrollFactor*l_ray_world);
 }
 
 void CameraController::updateProjection()
@@ -287,29 +273,29 @@ void CameraController::updateProjection()
     s_camera.setProjection(glm::perspective(s_hFov, aspect, s_zNear, s_zFar));
 }
 
-std::tuple<glm::vec3, glm::vec3> CameraController::screenToWorld(const glm::vec2& screenPos, const glm::mat4& camPos)
+std::tuple<glm::vec3, glm::vec3> CameraController::screenToWorld(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world)
 {
-    const auto[camNear, camFar] = screenToCam(screenPos, camPos);
+    const auto[p_near_cam, p_far_cam] = screenToCam(p_mouse_screen);
 
-    const glm::vec3 camOrig = getMat4Translation(camPos);
-    const glm::vec3 camAxisZ = getMat4AxisZ(camPos);
-    const glm::vec3 camAxisY = getMat4AxisY(camPos);
-    const glm::vec3 camAxisX = getMat4AxisX(camPos);
+    const glm::vec3 p_cam_world = getMat4Translation(t_cam_world);
+    const glm::vec3 l_camZ_world = getMat4AxisZ(t_cam_world);
+    const glm::vec3 l_camY_world = getMat4AxisY(t_cam_world);
+    const glm::vec3 l_camX_world = getMat4AxisX(t_cam_world);
 
-    glm::vec3 near = camOrig;
-    near += camAxisX*camNear.x;
-    near += camAxisY*camNear.y;
-    near += camAxisZ*camNear.z;
+    auto p_near_world = p_cam_world;
+    p_near_world += l_camZ_world*p_near_cam.z;
+    p_near_world += l_camY_world*p_near_cam.y;
+    p_near_world += l_camX_world*p_near_cam.x;
 
-    glm::vec3 far = camOrig;
-    far += camAxisX*camFar.x;
-    far += camAxisY*camFar.y;
-    far += camAxisZ*camFar.z;
+    auto p_far_world = p_cam_world;
+    p_far_world += l_camZ_world*p_far_cam.z;
+    p_far_world += l_camY_world*p_far_cam.y;
+    p_far_world += l_camX_world*p_far_cam.x;
 
-    return {near, far};
+    return {p_near_world, p_far_world};
 }
 
-std::tuple<glm::vec3, glm::vec3> CameraController::screenToCam(const glm::vec2& screenPos, const glm::mat4& camPos)
+std::tuple<glm::vec3, glm::vec3> CameraController::screenToCam(const glm::vec2& p_mouse_screen)
 {
     const float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
     const float tangent = tanf(deg2rad(s_hFov/2.0f));
@@ -324,25 +310,27 @@ std::tuple<glm::vec3, glm::vec3> CameraController::screenToCam(const glm::vec2& 
     const float leftFar = -rightFar;
     const float bottomFar = -topFar;
 
-    glm::vec3 near;
-    near.x = -map(screenPos.x, 0, Window::getWidth(), leftNear, rightNear);
-    near.y = map(screenPos.y, 0, Window::getHeight(), topNear, bottomNear);
-    near.z = s_zNear;
+    glm::vec3 p_near_cam;
+    p_near_cam.x = -map(p_mouse_screen.x, 0, Window::getWidth(), leftNear, rightNear);
+    p_near_cam.y = map(p_mouse_screen.y, 0, Window::getHeight(), topNear, bottomNear);
+    p_near_cam.z = s_zNear;
 
-    glm::vec3 far;
-    far.x = -map(screenPos.x, 0, Window::getWidth(), leftFar, rightFar);
-    far.y = map(screenPos.y, 0, Window::getHeight(), topFar, bottomFar);
-    far.z = s_zFar;
+    glm::vec3 p_far_cam;
+    p_far_cam.x = -map(p_mouse_screen.x, 0, Window::getWidth(), leftFar, rightFar);
+    p_far_cam.y = map(p_mouse_screen.y, 0, Window::getHeight(), topFar, bottomFar);
+    p_far_cam.z = s_zFar;
 
-    return {near, far};
+    // printVec(p_near_cam);
+    // printVec(p_far_cam);
+    return {p_near_cam, p_far_cam};
 }
 
-std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& screenPos, const glm::mat4& camPos)
+std::tuple<glm::vec3, glm::vec3> CameraController::cameraRay(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world)
 {
-    const auto[near, far] = screenToWorld(screenPos, camPos);
+    const auto[p_near_world, p_far_world] = screenToWorld(p_mouse_screen, t_cam_world);
 
-    const glm::vec3 l0 = near;
-    const glm::vec3 l = glm::normalize(far - near);
+    const glm::vec3 l_ray_world = glm::normalize(p_far_world - p_near_world);
+    const glm::vec3 p_ray_world = p_near_world;
 
-    return {l, l0};
+    return {l_ray_world, p_ray_world};
 }
