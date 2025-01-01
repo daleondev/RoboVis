@@ -24,7 +24,6 @@ public:
     void rotate(const float angle, const glm::vec3& l_axis_cam);
     void rotate(const glm::mat3& R);
     void transform(const glm::mat4& transformation);  
-    void reorthogonalize();
 
     inline glm::mat4 getPosition() const { return m_pos; };
     inline glm::mat4 getProjection() const { return m_projection; };
@@ -56,7 +55,7 @@ public:
 
     inline static Camera& getCamera() { return s_camera; }
     inline static bool isDragging() { return s_draggingTrans || s_draggingRot; }
-    inline static std::optional<glm::vec3> getDraggingPosition() { return s_dragPos; }
+    inline static glm::vec3 getDraggingPosition() { return s_dragPos; }
 private:
     static void updateProjection();
     static std::tuple<glm::vec3, glm::vec3> screenToWorld(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world);
@@ -73,11 +72,10 @@ private:
     static bool s_draggingRot;
     static glm::vec2 s_screenPosPrev;   
     static glm::mat4 s_camPosPrev;
-    static std::optional<glm::vec3> s_dragPos;
+    static glm::vec3 s_dragPos;
 
     inline static const float s_scrollFactor = 5.0f;
-    inline static const float s_dragFactor = 0.01f;
+    inline static const float s_dragFactor = 0.005f;
     inline static const float s_rotFactor = 0.2f;
-
     
 };

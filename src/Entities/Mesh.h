@@ -19,12 +19,12 @@ struct MeshData
 class Mesh : public Entity {
 
 public:
-    Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source);
+    Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source, const glm::mat4& t_mesh_world = glm::mat4(1.0f));
     virtual ~Mesh();
 
     virtual void draw(const std::optional<Camera>& camera = {}) override;
 
-    const std::vector<MeshData>& getData();
+    const std::vector<MeshData> getData();
 
 private:
     virtual void createBuffers() override;

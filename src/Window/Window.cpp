@@ -60,6 +60,8 @@ void Window::init()
         data.width = width;
         data.height = height;
 
+        glViewport(0, 0, width, height);
+
         WindowResizeEvent event(width, height);
         data.eventCallback(event);
     });

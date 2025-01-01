@@ -9,23 +9,9 @@
 #include "Entities/Marker.h"
 #include "Entities/Mesh.h"
 
+#include "Util/Log.h"
+
 Application* Application::s_instance = nullptr;
-
-static std::vector<std::string> splitString(std::string str, const char* delims)
-{
-	std::vector<std::string> parts;
-
-	size_t prev = 0, pos;
-	while ((pos = str.find_first_of(delims, prev)) != std::string::npos) {
-		if (pos > prev)
-			parts.push_back(str.substr(prev, pos - prev));
-		prev = pos + 1;
-	}
-	if (prev < str.size())
-		parts.push_back(str.substr(prev, std::string::npos));
-
-	return parts;
-}
 
 Application::Application() 
     : m_running(true), m_lastFrameTime(0.0f)
@@ -33,19 +19,21 @@ Application::Application()
     assert(!s_instance && "Application already exists");
     s_instance = this;
 
-    signal(SIGTERM, Application::handleSignal);
-    signal(SIGINT, Application::handleSignal);
+    LOG_INIT();
 
     Window::create("Application", 800, 600);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
-
     Scene::init();
+
+    signal(SIGTERM, Application::handleSignal);
+    signal(SIGINT, Application::handleSignal);
 }
 
 Application::~Application()
 {
-    aiReleaseImport(m_scene);
     Window::shutdown();
+
+    LOG_SHUTDOWN();
 }
 
 int Application::run(int argc, char **argv)
@@ -53,57 +41,45 @@ int Application::run(int argc, char **argv)
     std::cout << "Starting Application" << std::endl;
 
     if (argc != 2) {
-		std::cerr << "No robot model file specified." << std::endl;
+		std::cerr << "No robot model path specified." << std::endl;
 		return 1;
 	}
 
-    const std::string file = argv[1];
-    const auto parts = splitString(argv[1], ".");
-    if (parts.size() != 2 || aiIsExtensionSupported(parts[1].c_str()) == AI_FALSE) {
-		std::cerr << "Invalid input model file specified." << std::endl;
-		return 1;
-	}
+    for (int i = 0; i < 20; ++i)
+        LOG_INFO << i;
+    LOG_INFO_IMMEDIATELY << "lol";
 
-    m_scene = aiImportFile(file.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
-    if (!m_scene) {
-        std::cerr << "Loading input model file failed." << std::endl;
+    auto s = Timestamp().dateTimeStr();
+    LOG_TRACE << s;
+    s[3] = '1';
+    LOG_TRACE << s;
+    LOG_TRACE << Timestamp(s);
+    
+    // const std::string file = argv[1];
+    // const auto parts = splitString(argv[1], "/");
+    // if (parts.size() != 2 || aiIsExtensionSupported(parts[1].c_str()) == AI_FALSE) {
+	// 	std::cerr << "Invalid input model file specified." << std::endl;
+	// 	return 1;
+	// }
+
+    // m_scene = aiImportFile(file.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
+    // if (!m_scene) {
+    //     std::cerr << "Loading input model file failed." << std::endl;
+	// 	return 1;
+    // }
+
+    std::shared_ptr<Entity> origin = Scene::createMarker("Origin");
+    origin->scale({0.75f, 0.75f, 0.75f});
+
+    // todo: change entity type
+    std::shared_ptr<Entity> dragMarker = Scene::createMarker("DragMarker");
+    // dragMarker->scale({5.0f, 5.0f, 5.0f});
+    dragMarker->setVisible(false);
+
+    if (!Scene::createRobot(argv[1])) {
+        std::cerr << "Failed to create the robot." << std::endl;
 		return 1;
     }
-
-    // auto markerShader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Marker");
-    // auto meshShader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh");
-
-    std::shared_ptr<Entity> marker = Scene::createMarker("DragMarker");
-    marker->scale({10.0f, 10.0f, 10.0f});
-    // marker->setVisible(false);
-    // Scene::createMesh("Mesh1", m_scene);
-
-    // std::shared_ptr<Marker> marker = std::make_shared<Marker>(markerShader);
-    // marker->create();
-    // // marker->scale({10, 10, 10});
-
-    // std::shared_ptr<Marker> marker2 = std::make_shared<Marker>(markerShader);
-    // marker2->create();
-    // marker2->translate({0.0, 0.0, 5});
-    // marker2->scale({0.2, 0.2, 0.2});
-
-    // std::vector<std::shared_ptr<Mesh>> meshes(m_scene->mNumMeshes);
-    // for (size_t i = 0; i < meshes.size(); ++i) {
-    //     if (m_scene->mNumMaterials > 0 && m_scene->mMeshes[i]->mMaterialIndex < m_scene->mNumMaterials)
-    //         meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], m_scene->mMaterials[m_scene->mMeshes[i]->mMaterialIndex]);
-    //     else {
-    //         meshes[i] = std::make_shared<Mesh>(meshShader, m_scene->mMeshes[i], nullptr);
-    //     }
-    //     meshes[i]->create();
-    //     // meshes[i]->rotate(-M_PI_2, {1.0, 0.0, 0.0});
-    //     // meshes[i]->rotate(M_PI_4, {0.0, 1.0, 0.0});
-    // }
-
-    // m_entities.push_back(marker);
-    // m_entities.push_back(marker2);
-    // for (auto& mesh : meshes) {
-    //     m_entities.push_back(mesh);
-    // }
 
     while (m_running) {
         const float time = static_cast<float>(glfwGetTime())/1000.0f;

@@ -8,7 +8,7 @@
 
 #include "Entities/Mesh.h"
 
-#include "geometry.h"
+#include "Util/geometry.h"
 
 Camera::Camera()
     : m_pos(1.0f) , m_projection(1.0f), m_view(1.0f)
@@ -31,14 +31,14 @@ void Camera::reset()
 
 void Camera::setTranslation(const glm::vec3& p_world)
 {
-    m_pos = setMat4Translation(m_pos, p_world);
+    setMat4Translation(m_pos, p_world);
     posToView();
 }
 
 void Camera::setRotation(const float angle, const glm::vec3& l_axis_world)
 {
-    const glm::mat3 r_world = anlgeAxisF(angle, l_axis_world);
-    m_pos = setMat4Rotation(m_pos, r_world);
+    const glm::mat3 r_world = angleAxisF(angle, l_axis_world);
+    setMat4Rotation(m_pos, r_world);
     posToView();
 }
 
@@ -63,7 +63,7 @@ void Camera:: translate(const glm::vec3& l_cam)
 
 void Camera::rotate(const float angle, const glm::vec3& l_axis_cam)
 {
-    const auto r_cam = anlgeAxisF(angle, l_axis_cam);
+    const auto r_cam = angleAxisF(angle, l_axis_cam);
     m_pos = glm::mat4(r_cam) * m_pos;
     posToView();
 }
@@ -101,7 +101,7 @@ bool CameraController::s_draggingTrans;
 bool CameraController::s_draggingRot;
 glm::vec2 CameraController::s_screenPosPrev;
 glm::mat4 CameraController::s_camPosPrev;
-std::optional<glm::vec3> CameraController::s_dragPos;
+glm::vec3 CameraController::s_dragPos;
 
 void CameraController::init(const float hFov, const float zNear, const float zFar, const glm::mat4& t_camInit_world)
 {
@@ -180,7 +180,7 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
                     for (size_t i = 0; i < 3; ++i)
                         p_vertices_world[i] = data.vertices[indices[i]].pos;
 
-                    const auto&[l_n_world, l_p0_world] = trianglePlane(p_vertices_world);
+                    const auto[l_n_world, l_p0_world] = trianglePlane(p_vertices_world);
                     const auto p_hitTmp_world = intersectionLinePlane(l_n_world, l_p0_world, l_ray_world, p_ray_world);
                     if (p_hitTmp_world) {
                         if(pointInTriangle(l_n_world, l_p0_world, p_vertices_world, *p_hitTmp_world)) {
@@ -199,7 +199,7 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
     s_draggingRot = true;
     s_screenPosPrev = p_mouse_screen;
     s_camPosPrev = t_cam_world;
-    s_dragPos = p_hit_world && !glm::any(glm::isnan(*p_hit_world)) ? *p_hit_world : glm::vec3(0.0f);
+    s_dragPos = glm::vec3(0.0f); // s_dragPos = p_hit_world && !glm::any(glm::isnan(*p_hit_world)) ? *p_hit_world : glm::vec3(0.0f);
 }
 
 void CameraController::stopDraggingRot()
@@ -219,7 +219,7 @@ void CameraController::drag(const glm::vec2& p_mouse_screen)
     }
 
     if (s_draggingTrans) {
-        const glm::vec2 v = -s_dragFactor*(p_mouse_screen - s_screenPosPrev);
+        const glm::vec2 v = s_dragFactor*(p_mouse_screen - s_screenPosPrev);
         s_camera.translate(glm::vec3(v.x, v.y, 0.0));
         s_camPosPrev = s_camera.getPosition();
         s_screenPosPrev = p_mouse_screen;
@@ -228,7 +228,7 @@ void CameraController::drag(const glm::vec2& p_mouse_screen)
     else if (s_draggingRot) {       
         const auto angle = -deg2rad(s_rotFactor*glm::length(p_mouse_screen - s_screenPosPrev));
 
-        const auto p_drag_world = *s_dragPos;
+        const auto p_drag_world = s_dragPos;
         const auto p_cam_world = getMat4Translation(t_cam_world);
         const auto l_camZ_world = getMat4AxisZ(t_cam_world);
 
@@ -244,7 +244,7 @@ void CameraController::drag(const glm::vec2& p_mouse_screen)
         const auto l_drag_world = glm::normalize(p_curr_world - p_prev_world);
         const auto l_axis_world = glm::cross(l_drag_world, l_camZ_world);
         const auto l_axis_cam = t_world_cam * glm::vec4(l_axis_world, 0.0f);
-        const auto r_drag_cam = anlgeAxisF(angle, l_axis_cam);
+        const auto r_drag_cam = angleAxisF(angle, l_axis_cam);
 
         s_camera.translate(l_camToDrag_cam);
         s_camera.rotate(r_drag_cam);
@@ -258,10 +258,6 @@ void CameraController::drag(const glm::vec2& p_mouse_screen)
 void CameraController::zoom(const float factor)
 {
     const auto[l_ray_world, p_ray_world] = cameraRay(Input::GetMousePosition(), s_camera.getPosition());
-    // const auto t_cam_world = s_camera.getPosition();
-    // const auto t_world_cam = glm::inverseTranspose(t_cam_world);
-    // const auto l_ray_cam = t_world_cam * glm::vec4(l_ray_world, 0.0f);
-    // printVec(l_ray_world);
     s_camera.translateWorld(factor*s_scrollFactor*l_ray_world);
 }
 
@@ -320,8 +316,6 @@ std::tuple<glm::vec3, glm::vec3> CameraController::screenToCam(const glm::vec2& 
     p_far_cam.y = map(p_mouse_screen.y, 0, Window::getHeight(), topFar, bottomFar);
     p_far_cam.z = s_zFar;
 
-    // printVec(p_near_cam);
-    // printVec(p_far_cam);
     return {p_near_cam, p_far_cam};
 }
 

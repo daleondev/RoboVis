@@ -1,5 +1,7 @@
 #pragma once
 
+#include "util.h"
+
 #define MAT_ROW3(mat, row)  glm::vec3(  mat[row][0], mat[row][1], mat[row][2])
 #define MAT_COL3(mat, col)  glm::vec3(  mat[0][col], mat[1][col], mat[2][col])
 #define MAT3(mat, row, col) glm::mat3(  mat[row+0][col+0], mat[row+0][col+1], mat[row+0][col+2],\
@@ -53,26 +55,24 @@ static glm::mat3 rotationVecToVec(const glm::vec3& a, const glm::vec3& b)
     return r;
 }
 
-static std::tuple<glm::vec3, glm::vec3> trianglePlane(const std::array<glm::vec3, 3>& v)
+static std::tuple<glm::vec3, glm::vec3> trianglePlane(const std::array<glm::vec3, 3>& p_tri)
 {  
-    auto N = extendedCross(glm::vec4(v[0], 1.0f), glm::vec4(v[1], 1.0f), glm::vec4(v[2], 1.0f));
-    const glm::vec3 n = glm::normalize(glm::vec3(N/N.w));
-
-    const glm::vec3 p0 = (v[0]+v[1]+v[2])/3.0f;
-
-    return {n, p0};
+    auto N = extendedCross(glm::vec4(p_tri[0], 1.0f), glm::vec4(p_tri[1], 1.0f), glm::vec4(p_tri[2], 1.0f));
+    const glm::vec3 n_plane = glm::normalize(glm::vec3(N/N.w));
+    const glm::vec3 p_plane = (p_tri[0]+p_tri[1]+p_tri[2])/3.0f;
+    return {n_plane, p_plane};
 }
 
-static std::optional<glm::vec3> intersectionLinePlane(const glm::vec3& n, const glm::vec3& p0, const glm::vec3& l, const glm::vec3& l0)
+static std::optional<glm::vec3> intersectionLinePlane(const glm::vec3& n_plane, const glm::vec3& p_plane, const glm::vec3& l_line, const glm::vec3& p_line)
 {
     // https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    const float numerator = glm::dot(p0-l0, n);
+    const float numerator = glm::dot(p_plane-p_line, n_plane);
     if (numerator == 0)
         return {};
 
-    const float denominator = glm::dot(l, n);
+    const float denominator = glm::dot(l_line, n_plane);
     const float d = numerator/denominator;
-    const glm::vec3 p = l0+l*d;
+    const glm::vec3 p = p_line+l_line*d;
 
     return p;
 }
@@ -87,43 +87,43 @@ static int16_t location(const glm::vec3& N, const glm::vec3& P)
     return 0;
 }
 
-static void rotateAroundPoint(const glm::vec3& p0, const glm::mat3& r, glm::vec3& p)
+static void rotateAroundPoint(const glm::vec3& p_orig, const glm::mat3& r, glm::vec3& p_rot)
 {
     glm::mat4 mat(1.0f);
-    mat[0][3] = p[0] - p0[0];
-    mat[1][3] = p[1] - p0[1];
-    mat[2][3] = p[2] - p0[2];
+    mat[0][3] = p_rot[0] - p_orig[0];
+    mat[1][3] = p_rot[1] - p_orig[1];
+    mat[2][3] = p_rot[2] - p_orig[2];
 
     mat *= glm::mat4(r);
-    p[0] = mat[0][3];
-    p[1] = mat[1][3];
-    p[2] = mat[2][3];
+    p_rot[0] = mat[0][3];
+    p_rot[1] = mat[1][3];
+    p_rot[2] = mat[2][3];
 }
 
-static bool pointInTriangle(const glm::vec3& n, const glm::vec3& p0, std::array<glm::vec3, 3> v, glm::vec3 p)
+static bool pointInTriangle(const glm::vec3& n_plane, const glm::vec3& p_plane, std::array<glm::vec3, 3> p_tri, glm::vec3 p_check)
 {
     constexpr glm::vec3 UNIT_Z(0.0f, 0.0f, 1.0f);
 
-    if (glm::any(glm::isnan(n)) || glm::any(glm::isnan(p0)))
+    if (glm::any(glm::isnan(n_plane)) || glm::any(glm::isnan(p_plane)))
         return false;
 
-    if (glm::any(glm::epsilonEqual(v[0], v[1], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(v[1], v[2], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(v[2], v[0], glm::epsilon<float>())))
+    if (glm::any(glm::epsilonEqual(p_tri[0], p_tri[1], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(p_tri[1], p_tri[2], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(p_tri[2], p_tri[0], glm::epsilon<float>())))
         return false;
 
     glm::mat3 r(1.0f);
-    if (!glm::all(glm::epsilonEqual(n, UNIT_Z, glm::epsilon<float>())) && !glm::all(glm::epsilonEqual(n, -UNIT_Z, glm::epsilon<float>())))
-        r = rotationVecToVec(n, UNIT_Z);
+    if (!glm::all(glm::epsilonEqual(n_plane, UNIT_Z, glm::epsilon<float>())) && !glm::all(glm::epsilonEqual(n_plane, -UNIT_Z, glm::epsilon<float>())))
+        r = rotationVecToVec(n_plane, UNIT_Z);
 
-    rotateAroundPoint(p0, r, p);
+    rotateAroundPoint(p_plane, r, p_check);
 
     std::array<glm::vec3, 3> V, V_;
     for (size_t i = 0; i < 3; ++i) {
-        rotateAroundPoint(p0, r, v[i]);
-        V[i] = glm::vec3(glm::vec2(v[i]), 1.0f);
-        V_[i] = glm::vec3(glm::vec2(v[i]), 0.0f);
+        rotateAroundPoint(p_plane, r, p_tri[i]);
+        V[i] = glm::vec3(glm::vec2(p_tri[i]), 1.0f);
+        V_[i] = glm::vec3(glm::vec2(p_tri[i]), 0.0f);
     }
 
-    const auto P = glm::vec3(glm::vec2(p), 1.0f);
+    const auto P = glm::vec3(glm::vec2(p_check), 1.0f);
     int16_t locPrev;
     size_t j = 1;
     for (size_t i = 0; i < 3; ++i) {
@@ -145,9 +145,9 @@ static bool pointInTriangle(const glm::vec3& n, const glm::vec3& p0, std::array<
     return true;
 }
 
-static glm::mat3 anlgeAxisF(const float angle, const glm::vec3& axis)
+static glm::mat3 angleAxisF(const float angle, const glm::vec3& l_axis)
 {
-    // auto u = glm::normalize(axis);
+    // auto u = glm::normalize(l_axis);
     // const auto c = cosf(angle);
     // const auto s = sinf(angle);
 
@@ -157,7 +157,7 @@ static glm::mat3 anlgeAxisF(const float angle, const glm::vec3& axis)
     //     glm::vec3(u[1]*u[0]*t1 + u[2]*s, c + u[1]*u[1]*t1, u[1]*u[2]*t1 - u[0]*s),
     //     glm::vec3(u[2]*u[0]*t1 - u[1]*s, u[2]*u[1]*t1 + u[0]*s, c + u[2]*u[2]*t1)
     // );
-    return glm::transpose(glm::toMat3(glm::angleAxis(angle, axis)));
+    return glm::transpose(glm::toMat3(glm::angleAxis(angle, l_axis)));
 }
 
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
@@ -165,18 +165,18 @@ static float map(float x, float in_min, float in_max, float out_min, float out_m
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-static glm::mat4 setMat4Translation(glm::mat4 mat, const glm::vec3& trans)
+static glm::mat4& setMat4Translation(glm::mat4& mat, const glm::vec3& p)
 {
     for (size_t i = 0; i < 3; ++i)
-        mat[i][3] = trans[i];
+        mat[i][3] = p[i];
     return mat;
 }
 
-static glm::mat4 setMat4Rotation(glm::mat4 mat, const glm::mat3& rot)
+static glm::mat4& setMat4Rotation(glm::mat4& mat, const glm::mat3& r)
 {
     for (size_t i = 0; i < 3; ++i)
         for (size_t j = 0; j < 3; ++j)
-            mat[i][j] = rot[i][j];
+            mat[i][j] = r[i][j];
     return mat;
 }
 
@@ -206,6 +206,13 @@ static glm::mat3 getMat4Rotation(const glm::mat4& mat)
     return MAT3(mat, 0, 0);
 }
 
+static glm::vec3 strToVec3(const std::string& str)
+{
+    const auto& parts = splitString(str, ",; ");
+    assert(parts.size() == 3 && "Wrong number of vector elemets");
+    return glm::vec3(std::stof(parts[0]), std::stof(parts[1]), std::stof(parts[2]));
+}
+
 static void printMat(const glm::mat4& mat)
 {
     for (size_t i = 0; i < 4; ++i) {
@@ -217,8 +224,5 @@ static void printMat(const glm::mat4& mat)
 
 static void printVec(const glm::vec3& vec)
 {
-    for (size_t i = 0; i < 3; ++i) {
-        std::cout << vec[i] << "\t";
-    }
-    std::cout << "\n";
+    printf("%5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2]);
 }

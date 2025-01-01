@@ -5,13 +5,19 @@
 #include "Events/MouseEvent.h"
 #include "Events/WindowEvent.h"
 
+#include "Robot.h"
+
+class Mesh;
+class Marker;
+
 class Scene
 {
 public:
     static void init();
 
-    static std::shared_ptr<Entity> createMesh(const std::string& name, const aiScene* source, const glm::mat4& initialTransformation = glm::mat4(1.0f));
-    static std::shared_ptr<Entity> createMarker(const std::string& name, const glm::mat4& initialTransformation = glm::mat4(1.0f));
+    static bool createRobot(const std::string& sourceDir);
+    static std::shared_ptr<Mesh> createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world = glm::mat4(1.0f), const glm::mat4& initialTransformation = glm::mat4(1.0f));
+    static std::shared_ptr<Marker> createMarker(const std::string& name, const glm::mat4& initialTransformation = glm::mat4(1.0f));
 
     static void addEntity(const std::string& name, const std::shared_ptr<Entity>& entity);
     static std::shared_ptr<Entity> getEntity(const std::string& name);
@@ -31,5 +37,6 @@ public:
 
 private:
     static std::unordered_map<std::string, std::shared_ptr<Entity>> s_entities;
+    static Robot s_robot;
 
 };

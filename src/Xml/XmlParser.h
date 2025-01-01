@@ -1,6 +1,6 @@
 #pragma once
 
-#include "xml_util.h"
+#include "Util/util.h"
 #include "XmlLexer.h"
 
 struct XmlNode
@@ -33,6 +33,14 @@ public:
 
         createNodes(&m_root);
         return m_root;
+    }
+
+    static void traverseNodes(const XmlNode& node, const std::function<void(const XmlNode&)>& func)
+    {
+        for (auto child : node.children)
+            traverseNodes(child, func);
+
+        func(node);
     }
 
     static void print(const XmlNode& node, const int level = 0)
@@ -102,44 +110,63 @@ private:
     {
         const std::string attr = token.data;
 
-        auto parts = splitString(attr, "= ");
-        if (parts.size() % 2 != 0)
-            return;
+        bool isDigit = false;
+        bool isInt = false;
+        bool isVal = false;
+        bool valFirst = false;
+        bool quotExpectet = false;
+        std::string name, val;
+        for (const char c : attr) {
+            if (!isVal && c == ' ')
+                continue;
 
-        const auto isNumber = [](const std::string& str) -> bool {
-            if (str.empty())
-                return false;
+            if (isVal) {
+                if (valFirst && c != ' ') {
+                    valFirst = false;
+                    quotExpectet = c == '"';
+                } 
+                else if (!valFirst) {
+                    if ((quotExpectet && c == '"') || (!quotExpectet && c == ' ')) {
+                        quotExpectet = false;
+                        isVal = false;
+                        if (!val.empty() && !name.empty()) {
+                            if (isDigit)
+                                try {
+                                    if (isInt)
+                                        node.attributes.emplace(name, std::stoi(val));
+                                    else 
+                                        node.attributes.emplace(name, std::stof(val));
+                                }
+                                catch(std::exception& e) {
+                                    node.attributes.emplace(name, val);
+                                }
+                            else
+                                node.attributes.emplace(name, val);
+                        }
+                        name = "";
+                    }
+                    else {
+                        if (c == ' ' || c == ',')
+                            isDigit = false;
 
-            auto begin = str.begin();
-            if (str[0] == '-')
-                begin++;
+                        if (c == '.')
+                            isInt = false;
 
-            return std::find_if(begin, str.end(), [](const char c) { return !std::isdigit(c); }) == str.end();
-        };
-
-        const auto contains = [](const std::string& str, const char c) -> bool {
-            return std::find(str.begin(), str.end(), c) != str.end();
-        };
-        
-        for (size_t i = 0; i < parts.size(); i+=2) {
-            const std::string name = parts[i];
-            std::string val = parts[i+1];
-
-            std::variant<int, float, std::string> var;
-            if (isNumber(val)) {
-                if (contains(val, '.'))
-                    var = stof(val);
-                else
-                    var = stoi(val);
+                        val += c;
+                    }
+                }
+            } else {
+                if (c == '=') {
+                    isVal = true;
+                    valFirst = true;
+                    isInt = true;
+                    isDigit = true;
+                    val = "";
+                } 
+                else {
+                    name += c;
+                }
             }
-            else {
-                val.erase(std::ranges::remove_if(val, [](const char c) -> bool { 
-                    return c == '"';
-                }).begin(), val.end());
-                var = val;
-            }
-
-            node.attributes.emplace(name, var);
         }
     }
 

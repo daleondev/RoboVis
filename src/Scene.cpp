@@ -2,8 +2,6 @@
 
 #include "Scene.h"
 
-#include "geometry.h"
-
 #include "Window/Input.h"
 
 #include "Renderer/Renderer.h"
@@ -11,18 +9,30 @@
 #include "Entities/Marker.h"
 #include "Entities/Mesh.h"
 
+#include "Util/geometry.h"
+
 std::unordered_map<std::string, std::shared_ptr<Entity>> Scene::s_entities;
+Robot Scene::s_robot;
 
 void Scene::init()
 {
-    glm::mat4 t(1.0f);
-    t = anlgeAxisF(-M_PIf32/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    t[0][3] = 20.0f;
-    CameraController::init(70.0f, 0.3f, 1000.0f, t);
+    const auto r_cam_world = angleAxisF(M_PIf32/2 + M_PIf32/8, glm::vec3(1.0f, 0.0f, 0.0f)) * angleAxisF(-M_PIf32/4, glm::vec3(0.0f, 0.0f, 1.0f));
+    const auto p_cam_world = glm::vec3(2.0f, 2.0f, 2.0f);
+
+    glm::mat4 t_cam_world(1.0f);
+    setMat4Rotation(t_cam_world, r_cam_world);
+    setMat4Translation(t_cam_world, p_cam_world);
+
+    CameraController::init(70.0f, 0.3f, 1000.0f, t_cam_world);
     Renderer::init();
 }
 
-std::shared_ptr<Entity> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& initialTransformation)
+bool Scene::createRobot(const std::string& sourceDir)
+{
+    return s_robot.setup(sourceDir);
+}
+
+std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Shader> shader;
     if (ShaderLibrary::exists("Mesh"))
@@ -30,13 +40,13 @@ std::shared_ptr<Entity> Scene::createMesh(const std::string& name, const aiScene
     else
         shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh", "Mesh");
 
-    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(shader, source);
+    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(shader, source, t_mesh_world);
     mesh->setTransformation(initialTransformation);
     addEntity(name, mesh);
     return mesh;
 }
 
-std::shared_ptr<Entity> Scene::createMarker(const std::string& name, const glm::mat4& initialTransformation)
+std::shared_ptr<Marker> Scene::createMarker(const std::string& name, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Shader> shader;
     if (ShaderLibrary::exists("Marker"))
@@ -126,12 +136,11 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
         }
     }
 
-    if (CameraController::isDragging() && entityExists("DragMarker"))
-        if (auto pos = CameraController::getDraggingPosition(); pos) {
-            auto marker = getEntity("DragMarker");
-            marker->setTranslation(*pos);
-            marker->setVisible(true);
-        }
+    if (CameraController::isDragging() && entityExists("DragMarker")) {
+        auto marker = getEntity("DragMarker");
+        marker->setTranslation(CameraController::getDraggingPosition());
+        marker->setVisible(true);
+    }
 
     return true;
 }
@@ -149,7 +158,7 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
         {
             CameraController::stopDraggingRot();
             if (entityExists("DragMarker"))
-                // getEntity("DragMarker")->setVisible(false);
+                getEntity("DragMarker")->setVisible(false);
             break;
         }
     }

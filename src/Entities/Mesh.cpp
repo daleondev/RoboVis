@@ -4,9 +4,17 @@
 
 #include "Renderer/Renderer.h"
 
-Mesh::Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source)
+#include "Util/geometry.h"
+
+Mesh::Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source, const glm::mat4& t_mesh_world)
     : Entity(shader)
 {
+    const aiMatrix4x4 rootTransform = source->mRootNode->mTransformation;
+    glm::mat4 t_root_world;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            t_root_world[i][j] = rootTransform[i][j];
+
     m_meshData.resize(source->mNumMeshes);
     for (size_t i = 0; i < m_meshData.size(); ++i) {
         auto& meshData = m_meshData[i];
@@ -23,9 +31,14 @@ Mesh::Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source)
             auto& vertex = meshData.vertices[j];
             auto& vertSource = meshSource->mVertices[j];
 
-            vertex.pos.x = vertSource.x;
-            vertex.pos.y = vertSource.y;
-            vertex.pos.z = vertSource.z;
+            glm::vec3 p_vertex_world;
+            p_vertex_world.x = vertSource.x;
+            p_vertex_world.y = vertSource.y;
+            p_vertex_world.z = vertSource.z;  
+
+            p_vertex_world = glm::vec4(p_vertex_world, 1.0f) * t_root_world * t_mesh_world;
+
+            vertex.pos = p_vertex_world;
             vertex.color = color;
         }
 
@@ -56,15 +69,15 @@ void Mesh::draw(const std::optional<Camera>& camera)
         Renderer::draw(m_shader, va);
 }
 
-const std::vector<MeshData>& Mesh::getData()
+const std::vector<MeshData> Mesh::getData()
 {
-    for (auto& mesh : m_meshData) {
+    auto meshData = m_meshData;
+    for (auto& mesh : meshData) {
         for (auto& v : mesh.vertices) {
-            v.pos = glm::vec4(v.pos, 1.0f) * m_model;
+            v.pos = m_model * glm::vec4(v.pos, 1.0f);
         }
     }
-
-    return m_meshData;
+    return meshData;
 }
 
 void Mesh::createBuffers()

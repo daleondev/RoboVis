@@ -37,7 +37,9 @@ file(GLOB_RECURSE HEADERS src/*.h )
 set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # set linked libraries
-set(LIBS glm glfw GLESv2 assimp)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+set(LIBS Threads::Threads glm glfw GLESv2 assimp)
 
 # set defines
 set(DEFINES GLFW_INCLUDE_ES3)
