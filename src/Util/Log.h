@@ -3,7 +3,7 @@
 #include "Timestamp.h"
 #include "SafeQueue.h"
 
-#define METHOD_NAME             std::string_view(g_buff.data(), static_cast<size_t>(std::snprintf(g_buff.data(), g_buff.size(), "%s::%s", typeid(*this).name()+2, __FUNCTION__)))
+#define METHOD_NAME             functionToLocation(std::source_location::current().function_name())
 
 #define LOG_INIT()			    Log::init()
 #define LOG_SHUTDOWN()			Log::shutdown()
@@ -27,8 +27,6 @@
     #define FMT_ERROR(fmt, ...)		Log::format(LogLevel::Error, METHOD_NAME, fmt, __VA_ARGS__)
     #define FMT_FATAL(fmt, ...)		Log::format(LogLevel::Fatal, METHOD_NAME, fmt, __VA_ARGS__)
 #endif
-
-static thread_local std::array<char, 1024> g_buff;
 
 enum class LogLevel {
 	Trace,
@@ -85,3 +83,17 @@ private:
     static std::mutex s_mutex;
 
 };
+
+static std::string functionToLocation(const std::string& func)
+{
+	std::smatch match;
+	if (std::regex_search(func, match, std::regex(R"((?:\b(\w+)\b::)?\b(\w+)\b(?=\s*\())")))
+		if (match[1].matched) {
+			return match[1].str() + "::" + match[2].str();
+		}
+		else {
+			return match[2].str();
+		}
+
+	return "";
+}

@@ -38,35 +38,12 @@ Application::~Application()
 
 int Application::run(int argc, char **argv)
 {
-    std::cout << "Starting Application" << std::endl;
+    LOG_INFO << "Starting Application";
 
     if (argc != 2) {
-		std::cerr << "No robot model path specified." << std::endl;
+		LOG_FATAL << "No robot model path specified.";
 		return 1;
 	}
-
-    for (int i = 0; i < 20; ++i)
-        LOG_INFO << i;
-    LOG_INFO_IMMEDIATELY << "lol";
-
-    auto s = Timestamp().dateTimeStr();
-    LOG_TRACE << s;
-    s[3] = '1';
-    LOG_TRACE << s;
-    LOG_TRACE << Timestamp(s);
-    
-    // const std::string file = argv[1];
-    // const auto parts = splitString(argv[1], "/");
-    // if (parts.size() != 2 || aiIsExtensionSupported(parts[1].c_str()) == AI_FALSE) {
-	// 	std::cerr << "Invalid input model file specified." << std::endl;
-	// 	return 1;
-	// }
-
-    // m_scene = aiImportFile(file.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
-    // if (!m_scene) {
-    //     std::cerr << "Loading input model file failed." << std::endl;
-	// 	return 1;
-    // }
 
     std::shared_ptr<Entity> origin = Scene::createMarker("Origin");
     origin->scale({0.75f, 0.75f, 0.75f});
@@ -77,7 +54,7 @@ int Application::run(int argc, char **argv)
     dragMarker->setVisible(false);
 
     if (!Scene::createRobot(argv[1])) {
-        std::cerr << "Failed to create the robot." << std::endl;
+        LOG_FATAL << "Failed to create the robot.";
 		return 1;
     }
 
@@ -94,6 +71,7 @@ int Application::run(int argc, char **argv)
 
 void Application::close()
 {
+    LOG_WARN << "Stopping Application";
     m_running = false;
 }
 
@@ -131,7 +109,7 @@ bool Application::onWindowClose(WindowCloseEvent& e)
 
 void Application::handleSignal(int signal)
 {
-    std::cout << "Signal caught: " << signal << std::endl;
+    // LOG_WARN << "Signal caught: " << signal;    
     WindowCloseEvent event;
     Application::s_instance->onWindowClose(event);
 }

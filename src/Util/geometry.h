@@ -2,11 +2,38 @@
 
 #include "util.h"
 
+#include "Log.h"
+
 #define MAT_ROW3(mat, row)  glm::vec3(  mat[row][0], mat[row][1], mat[row][2])
 #define MAT_COL3(mat, col)  glm::vec3(  mat[0][col], mat[1][col], mat[2][col])
 #define MAT3(mat, row, col) glm::mat3(  mat[row+0][col+0], mat[row+0][col+1], mat[row+0][col+2],\
                                         mat[row+1][col+0], mat[row+1][col+1], mat[row+1][col+2],\
                                         mat[row+2][col+0], mat[row+2][col+1], mat[row+2][col+2])
+
+static void printMat(const glm::mat4& mat)
+{
+    std::stringstream ss;
+    ss << '\n';
+    for (size_t i = 0; i < 4; ++i) {
+        ss << strPrintf("%5.5f %-5.5f %-5.5f %-5.5f\n", mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
+    }
+    LOG_TRACE << ss.str();
+}
+
+static void printMat(const glm::mat3& mat)
+{
+    std::stringstream ss;
+    ss << '\n';
+    for (size_t i = 0; i < 3; ++i) {
+        ss << strPrintf("%5.5f %-5.5f %-5.5f\n", mat[i][0], mat[i][1], mat[i][2]);
+    }
+    LOG_TRACE << ss.str();
+}
+
+static void printVec(const glm::vec3& vec)
+{
+    LOG_TRACE << strPrintf("%5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2]);
+}
 
 static float deg2rad(const float deg) 
 {
@@ -89,6 +116,11 @@ static int16_t location(const glm::vec3& N, const glm::vec3& P)
 
 static void rotateAroundPoint(const glm::vec3& p_orig, const glm::mat3& r, glm::vec3& p_rot)
 {
+    // glm::vec3 translatedPoint = p_rot - p_orig;
+    // glm::vec3 rotatedPoint = r * translatedPoint;
+    // glm::vec3 finalPoint = rotatedPoint + p_orig;
+    // p_rot = finalPoint;
+
     glm::mat4 mat(1.0f);
     mat[0][3] = p_rot[0] - p_orig[0];
     mat[1][3] = p_rot[1] - p_orig[1];
@@ -145,19 +177,64 @@ static bool pointInTriangle(const glm::vec3& n_plane, const glm::vec3& p_plane, 
     return true;
 }
 
-static glm::mat3 angleAxisF(const float angle, const glm::vec3& l_axis)
+static glm::mat3 rotX(const float angle)
 {
-    // auto u = glm::normalize(l_axis);
-    // const auto c = cosf(angle);
-    // const auto s = sinf(angle);
+    return glm::mat3(
+        1.0f,        0.0f,         0.0f,
+        0.0f, cosf(angle), -sinf(angle),
+        0.0f, sinf(angle),  cosf(angle)
+    );
+}
 
-    // const auto t1 = 1-c;
-    // return glm::mat3(
-    //     glm::vec3(c + u[0]*u[0]*t1, u[0]*u[1]*t1 - u[2]*s, u[0]*u[2]*t1 + u[1]*s),
-    //     glm::vec3(u[1]*u[0]*t1 + u[2]*s, c + u[1]*u[1]*t1, u[1]*u[2]*t1 - u[0]*s),
-    //     glm::vec3(u[2]*u[0]*t1 - u[1]*s, u[2]*u[1]*t1 + u[0]*s, c + u[2]*u[2]*t1)
-    // );
-    return glm::transpose(glm::toMat3(glm::angleAxis(angle, l_axis)));
+static glm::mat3 rotY(const float angle)
+{
+    return glm::mat3(
+         cosf(angle), 0.0f, sinf(angle),
+         0.0f       , 1.0f,        0.0f,
+        -sinf(angle), 0.0f, cosf(angle)
+    );
+}
+
+static glm::mat3 rotZ(const float angle)
+{
+    return glm::mat3(
+        cosf(angle), -sinf(angle), 0.0f,
+        sinf(angle),  cosf(angle), 0.0f,
+        0.0f       ,  0.0f       , 1.0f
+    );
+}
+
+static glm::mat3 angleAxisF(const float angle, glm::vec3 l_axis)
+{
+    l_axis = glm::normalize(l_axis);
+    const auto c = cosf(angle);
+    const auto s = sinf(angle);
+    const auto t1 = 1-c;
+    return glm::mat3(
+        c + l_axis[0]*l_axis[0]*t1          , l_axis[0]*l_axis[1]*t1 - l_axis[2]*s, l_axis[0]*l_axis[2]*t1 + l_axis[1]*s,
+        l_axis[1]*l_axis[0]*t1 + l_axis[2]*s, c + l_axis[1]*l_axis[1]*t1          , l_axis[1]*l_axis[2]*t1 - l_axis[0]*s,
+        l_axis[2]*l_axis[0]*t1 - l_axis[1]*s, l_axis[2]*l_axis[1]*t1 + l_axis[0]*s,           c + l_axis[2]*l_axis[2]*t1
+    );
+}
+
+static glm::mat3 eulerXYZ(const glm::vec3& xyz)
+{
+    return rotZ(xyz.z)*rotY(xyz.y)*rotX(xyz.x);
+}
+
+static glm::mat3 eulerZYX(const glm::vec3& zyx)
+{
+    return rotX(zyx[2])*rotY(zyx[1])*rotZ(zyx[0]);
+}
+
+static glm::mat3 eulerXYZext(const glm::vec3& xyz)
+{
+    return rotX(xyz.x)*rotY(xyz.y)*rotZ(xyz.z);
+}
+
+static glm::mat3 eulerZYXext(const glm::vec3& zyx)
+{
+    return rotZ(zyx[0])*rotY(zyx[1])*rotX(zyx[2]);
 }
 
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
@@ -208,21 +285,7 @@ static glm::mat3 getMat4Rotation(const glm::mat4& mat)
 
 static glm::vec3 strToVec3(const std::string& str)
 {
-    const auto& parts = splitString(str, ",; ");
+    const auto parts = splitString(str, ",; ");
     assert(parts.size() == 3 && "Wrong number of vector elemets");
     return glm::vec3(std::stof(parts[0]), std::stof(parts[1]), std::stof(parts[2]));
-}
-
-static void printMat(const glm::mat4& mat)
-{
-    for (size_t i = 0; i < 4; ++i) {
-        printf("%5.5f %-5.5f %-5.5f %-5.5f\n", mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
-    }
-    std::cout << "\n";
-}
-
-
-static void printVec(const glm::vec3& vec)
-{
-    printf("%5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2]);
 }

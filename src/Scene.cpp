@@ -71,6 +71,7 @@ std::shared_ptr<Entity> Scene::getEntity(const std::string& name)
     assert(s_entities.find(name) != s_entities.end() && "Entity doesnt exist");
     return s_entities[name];
 }
+
 void Scene::deleteEntity(const std::string& name) 
 { 
     auto it = s_entities.find(name);
@@ -103,7 +104,6 @@ void Scene::onUpdate(const Timestep dt)
 
 bool Scene::onMouseLeave(MouseLeaveEvent& e)
 {   
-    // std::cout << "onMouseLeave" << std::endl;
     CameraController::stopInteraction();
 
     return true;
@@ -111,7 +111,6 @@ bool Scene::onMouseLeave(MouseLeaveEvent& e)
 
 bool Scene::onMouseMoved(MouseMovedEvent& e)
 {   
-    // std::cout << "onMouseMoved " << e.toString() << std::endl;
     if (CameraController::isDragging()) {
         const auto pos = e.getPosition();
         CameraController::drag({pos.first, pos.second});
@@ -122,7 +121,6 @@ bool Scene::onMouseMoved(MouseMovedEvent& e)
 
 bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
 {
-    // std::cout << "onMouseButtonPressed" << std::endl;
     switch(e.getMouseButton()) {
         case GLFW_MOUSE_BUTTON_LEFT:
         {
@@ -147,7 +145,6 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
 
 bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
 {
-    // std::cout << "onMouseButtonReleased" << std::endl;
     switch(e.getMouseButton()) {
         case GLFW_MOUSE_BUTTON_LEFT:
         {
@@ -168,7 +165,6 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
 
 bool Scene::onMouseScrolled(MouseScrolledEvent& e)
 {
-    // std::cout << "onMouseScrolled" << std::endl;
     CameraController::zoom(e.getYOffset());
 
     return true;
@@ -176,7 +172,6 @@ bool Scene::onMouseScrolled(MouseScrolledEvent& e)
 
 bool Scene::onWindowResized(WindowResizeEvent& e)
 {
-    // std::cout << "onWindowResized" << e.toString() << std::endl;
     CameraController::onResize();
 
     return true;

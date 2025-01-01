@@ -24,6 +24,7 @@
 #include <array>
 #include <tuple>
 #include <mutex>
+#include <regex>
 #include <chrono>
 #include <memory>
 #include <vector>
@@ -43,6 +44,7 @@
 #include <filesystem>
 #include <string_view>
 #include <unordered_map>
+#include <source_location>
 #include <condition_variable>
 
 #ifdef __cpp_lib_format

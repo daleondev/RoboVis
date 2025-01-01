@@ -38,11 +38,11 @@ static std::string readFile(const std::filesystem::path& filePath)
     return content;
 }
 
-// template<typename ... T>
-// static constexpr std::string strPrintf(const std::string_view fmt, const T ... args)
-// {
-// 	const size_t size = static_cast<size_t>(std::snprintf(nullptr, 0, fmt.data(), args ...));
-// 	std::string str(size, '\0');
-// 	std::snprintf(str.data(), size+1, fmt.data(), args ...);
-// 	return str;
-// }
+template<typename ... T>
+static constexpr std::string strPrintf(const std::string_view fmt, const T ... args)
+{
+	const size_t size = static_cast<size_t>(std::snprintf(nullptr, 0, fmt.data(), args ...));
+	std::string str(size, '\0');
+	std::snprintf(str.data(), size+1, fmt.data(), args ...);
+	return str;
+}

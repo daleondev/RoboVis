@@ -3,10 +3,8 @@
 #include "Robot.h"
 #include "Scene.h"
 
-#include "Xml/XmlParser.h"
-
 #include "Util/geometry.h"
-#include "Util/util.h"
+#include "Util/Log.h"
 
 Robot::Robot() = default;
 
@@ -14,18 +12,16 @@ Robot::~Robot() = default;
 
 bool Robot::setup(const std::string& sourceDir)
 {
-    // const auto origPath = std::filesystem::current_path();
-
     const auto robDir = std::filesystem::path(sourceDir);
     if (!std::filesystem::exists(robDir)) {
-        std::cerr << "Robot model directory invalid." << std::endl;
+        LOG_ERROR << "Robot model directory invalid.";
 		return false;
     }
 
     const auto urdfDir = std::filesystem::path(sourceDir + "/urdf");
     auto meshDir = std::filesystem::path(sourceDir + "/meshes");
     if (!std::filesystem::exists(urdfDir) || !std::filesystem::exists(meshDir)) {
-        std::cerr << "Robot model directory has invalid folder structure." << std::endl;
+        LOG_ERROR << "Robot model directory has invalid folder structure.";
 		return false;
     }
 
@@ -37,146 +33,284 @@ bool Robot::setup(const std::string& sourceDir)
         }
     }
     if (urdfContent.empty()) {
-        std::cerr << "Robot model directory does not contain valid urdf-data." << std::endl;
+        LOG_ERROR << "Robot model directory does not contain valid urdf-data.";
 		return false;
     }
 
+    // parse urdf file
     XmlLexer urdfLexer(urdfContent);
     XmlParser urdfParser(urdfLexer.generateTokens());
 
-    // Root
+    // root
     const XmlNode urdfRoot = urdfParser.parse();
     if (urdfRoot.children.size() != 1 || urdfRoot.children.front().tag != "robot") {
-        std::cerr << "Invalid urdf format." << std::endl;
+        LOG_ERROR << "Invalid urdf format.";
 		return false;
     }
 
-    // Robot
+    // robot
     const XmlNode robotNode = urdfRoot.children.front();
     if (auto it = robotNode.attributes.find("name"); it == robotNode.attributes.cend() || it->second.index() != 2) {
-        std::cerr << "Invalid robot tag." << std::endl;
+        LOG_ERROR << "Invalid robot tag.";
 		return false;
     }
     m_name = std::get<std::string>(robotNode.attributes.at("name"));
-    std::cout << "Robot: " << m_name << std::endl;
+    LOG_INFO << "adding Robot: " << m_name;
     
-    // Links/Joints
+    // links/joints
     for (const auto& node : robotNode.children) {
         if (auto it = node.attributes.find("name"); it != node.attributes.cend() && it->second.index() == 2) {
             const std::string name = std::get<std::string>(it->second);
 
-            // Link
+            // link
             if (node.tag == "link") {
 
-                // extract node with visual data
-                std::optional<XmlNode> visualNode;
-                for (const auto& child : node.children) {
-                    if (child.tag == "visual")
-                        visualNode = child;
-                    else if (!visualNode && child.tag == "collision")
-                        visualNode = child;
-                }
-                if (!visualNode) {
-                    std::cerr << "\tVisual node missing: " << name << std::endl;
-                    continue;
-                }
-
-                // extract node with transformation data and node with geometry data
-                std::optional<XmlNode> originNode;
-                std::optional<XmlNode> geometryNode;
-                for (const auto& child : visualNode->children) {
-                    if (child.tag == "origin")
-                        originNode = child;
-                    else if (child.tag == "geometry")
-                        geometryNode = child;
-                        
-                    if (originNode && geometryNode)
-                        break;
-                }
-
-                // ------------- Transformation
-
-                // check transformation data
-                if (!originNode) {
-                    std::cerr << "\tOrigin node missing: " << name << std::endl;
+                if(!setupLink(name, meshDir, node))
                     return false;
-                }
 
-                // get translation
-                it = originNode->attributes.find("xyz");
-                glm::vec3 p_mesh_world(0.0f);
-                if (it != originNode->attributes.cend() && it->second.index() == 2)
-                    p_mesh_world = strToVec3(std::get<std::string>(it->second));
-                else
-                    std::cerr << "\tNo xyz specified: " << name << std::endl;
-
-                // get rotation
-                it = originNode->attributes.find("rpy");
-                glm::vec3 r_mesh_world(0.0f);
-                if (it != originNode->attributes.cend() && it->second.index() == 2)
-                    r_mesh_world = strToVec3(std::get<std::string>(it->second));
-                else
-                    std::cerr << "\tNo rpy specified: " << name << std::endl;
-
-                glm::mat4 t_mesh_world =    angleAxisF(r_mesh_world.r, glm::vec3(1, 0, 0)) * 
-                                            angleAxisF(r_mesh_world.p, glm::vec3(0, 1, 0)) * 
-                                            angleAxisF(r_mesh_world.y, glm::vec3(0, 0, 1));
-                setMat4Translation(t_mesh_world, p_mesh_world);
-
-                // ------------- Mesh
-
-                // check geometry data
-                if (!geometryNode) {
-                    std::cerr << "\tGeometry node missing: " << name << std::endl;
-                    return false;
-                }
-
-                // extract node with geometry data
-                std::optional<XmlNode> meshNode;
-                for (const auto& child : geometryNode->children) 
-                    if (child.tag == "mesh") {
-                        meshNode = child;
-                        break;
-                    }
-                if (!meshNode) {
-                    std::cerr << "\tMesh node missing: " << name << std::endl;
-                    return false;
-                }
-
-                // get mesh file name
-                it = meshNode->attributes.find("filename");
-                if (it == meshNode->attributes.cend() || it->second.index() != 2) {
-                    std::cerr << "\tNo mesh-file specified: " << name << std::endl;
-                    return false;
-                }
-
-                // check mesh file
-                const std::filesystem::path meshFile = meshDir.string() + '/' + std::get<std::string>(it->second);
-                if (aiIsExtensionSupported(meshFile.extension().c_str()) == AI_FALSE) {
-                    std::cerr << "\tInvalid mesh-file: " << name << std::endl;
-                    return false;
-                }      
-
-                // create entity with mesh data
-                const aiScene* meshSource = aiImportFile(meshFile.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
-                const auto mesh = Scene::createMesh(name, meshSource, t_mesh_world);
-                aiReleaseImport(meshSource);
-
-                // add link
-                std::cout << "\tadding link: " << name << std::endl;
-                m_links.emplace(name, std::make_shared<LinkData>(name, mesh));
-
-                return true;
+                // return true;
             }
-
-            // Joint
+            // joint
             else if (node.tag == "joint") {
-                
 
-                std::cout << "\tadding joint: " << name << std::endl;
+                if(!setupJoint(name, node))
+                    return false;
+                
             }
         }
     }
+
+    // for (auto j : m_joints) {
+    //     printMat(j.second->parentToChild);
+    //     printVec(j.second->rotationAxis);
+    //     LOG_TRACE << "----------------------";
+    // }
+
+    return true;
+}
+
+bool Robot::setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode)
+{
+    // extract node with visual data
+    std::optional<XmlNode> visualNode;
+    for (const auto& child : linkNode.children) {
+        if (child.tag == "visual")
+            visualNode = child;
+        else if (!visualNode && child.tag == "collision")
+            visualNode = child;
+    }
+    if (!visualNode) {
+        LOG_WARN << "Visual node missing: " << name;
+        return true;
+    }
+
+    // extract node with transformation data and node with geometry data
+    std::optional<XmlNode> originNode;
+    std::optional<XmlNode> geometryNode;
+    for (const auto& child : visualNode->children) {
+        if (child.tag == "origin")
+            originNode = child;
+        else if (child.tag == "geometry")
+            geometryNode = child;
+            
+        if (originNode && geometryNode)
+            break;
+    }
+
+    // ------------- Transformation
+
+    glm::mat4 t_mesh_world(1.0f);
+    if (originNode) {
+        // get translation
+        auto it = originNode->attributes.find("xyz");
+        glm::vec3 p_mesh_world(0.0f);
+        if (it != originNode->attributes.cend() && it->second.index() == 2)
+            p_mesh_world = strToVec3(std::get<std::string>(it->second));
+        else
+            LOG_WARN << "No xyz specified: " << name;
+
+        // get rotation
+        it = originNode->attributes.find("rpy");
+        glm::vec3 r_mesh_world(0.0f);
+        if (it != originNode->attributes.cend() && it->second.index() == 2)
+            r_mesh_world = strToVec3(std::get<std::string>(it->second));
+        else
+            LOG_WARN << "No rpy specified: " << name;
+
+        t_mesh_world = eulerXYZ(r_mesh_world);
+        setMat4Translation(t_mesh_world, p_mesh_world);
+    }
+    else
+        LOG_WARN << "Origin node missing: " << name;
+
+    // ------------- Mesh
+
+    // check geometry data
+    if (!geometryNode) {
+        LOG_WARN << "Geometry node missing: " << name;
+        return false;
+    }
+
+    // extract node with geometry data
+    std::optional<XmlNode> meshNode;
+    for (const auto& child : geometryNode->children) 
+        if (child.tag == "mesh") {
+            meshNode = child;
+            break;
+        }
+    if (!meshNode) {
+        LOG_ERROR << "Mesh node missing: " << name;
+        return false;
+    }
+
+    // get mesh file name
+    auto it = meshNode->attributes.find("filename");
+    if (it == meshNode->attributes.cend() || it->second.index() != 2) {
+        LOG_ERROR << "No mesh-file specified: " << name;
+        return false;
+    }
+
+    // check mesh file
+    const std::filesystem::path meshFile = meshDir.string() + '/' + std::get<std::string>(it->second);
+    if (aiIsExtensionSupported(meshFile.extension().c_str()) == AI_FALSE) {
+        LOG_ERROR << "Invalid mesh-file: " << name;
+        return false;
+    }      
+
+    // create entity with mesh data
+    const aiScene* meshSource = aiImportFile(meshFile.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
+    const auto mesh = Scene::createMesh(name, meshSource, t_mesh_world);
+    aiReleaseImport(meshSource);
+
+    // add link
+    LOG_INFO << "adding link: " << name;
+    m_links.emplace(name, std::make_shared<LinkData>(name, mesh));
+
+    return true;
+}
+
+bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
+{
+    // extract nodes with transformation data, parent, child and limit
+    std::optional<XmlNode> originNode, parentNode, childNode, axisNode, limitNode;
+    for (const auto& child : linkNode.children) {
+        if (child.tag == "origin")
+            originNode = child;
+        else if (child.tag == "parent")
+            parentNode = child;
+        else if (child.tag == "child")
+            childNode = child;
+        else if (child.tag == "axis")
+            axisNode = child;
+        else if (child.tag == "limit")
+            limitNode = child;
+    }
+
+    // ------------- Transformation
+
+    if (!originNode) {
+        LOG_ERROR << "Origin node missing: " << name;
+        return false;
+    }
+    
+    // get translation
+    auto it = originNode->attributes.find("xyz");
+    glm::vec3 p_child_parent(0.0f);
+    if (it != originNode->attributes.cend() && it->second.index() == 2)
+        p_child_parent = strToVec3(std::get<std::string>(it->second));
+    else
+        LOG_WARN << "No xyz specified: " << name;
+
+    // get rotation
+    it = originNode->attributes.find("rpy");
+    glm::vec3 r_child_parent(0.0f);
+    if (it != originNode->attributes.cend() && it->second.index() == 2)
+        r_child_parent = strToVec3(std::get<std::string>(it->second));
+    else
+        LOG_WARN << "No rpy specified: " << name;
+
+    glm::mat4 t_child_parent = eulerXYZ(r_child_parent);
+    setMat4Translation(t_child_parent, p_child_parent);
+
+    // ------------- Parent/Child
+
+    // get parent
+    if (!parentNode) {
+        LOG_ERROR << "Parent node missing: " << name;
+        return false;
+    }
+
+    it = parentNode->attributes.find("link");
+    std::shared_ptr<LinkData> parent = nullptr;
+    if (it != parentNode->attributes.cend() && it->second.index() == 2) {
+        const auto parentName = std::get<std::string>(it->second);
+        if (const auto p = m_links.find(parentName); p != m_links.end())
+            parent = p->second;
+    }
+
+    if (!parent) {
+        LOG_WARN << "No valid parent specified: " << name;
+        return true;
+    }
+
+    // get child
+    if (!childNode) {
+        LOG_ERROR << "Parent node missing: " << name;
+        return false;
+    }
+
+    it = childNode->attributes.find("link");
+    std::shared_ptr<LinkData> child = nullptr;
+    if (it != childNode->attributes.cend() && it->second.index() == 2) {
+        const auto childName = std::get<std::string>(it->second);
+        if (const auto p = m_links.find(childName); p != m_links.end())
+            child = p->second;
+    }
+
+    if (!child) {
+        LOG_WARN << "No valid child specified: " << name;
+        return true;
+    }
+
+    // ------------- Axis
+
+    // get axis
+    glm::vec3 axis(1.0f, 0.0f, 0.0f);
+    if (axisNode) {
+        it = axisNode->attributes.find("xyz");
+        if (it != limitNode->attributes.cend() && it->second.index() == 2)
+            axis = glm::normalize(strToVec3(std::get<std::string>(it->second)));
+        else {
+            LOG_ERROR << "Axis xyz missing: " << name;
+            return false;
+        }
+    }
+    else 
+        LOG_WARN << "Axis node missing: " << name;
+
+    // ------------- Limits
+
+    // get limits
+    std::pair<float, float> limits(0.0f, 0.0f);
+    if (limitNode) {
+        it = limitNode->attributes.find("lower");
+        if (it != limitNode->attributes.cend() && it->second.index() == 1)
+            limits.first = std::get<float>(it->second);
+        else
+            LOG_WARN << "No lower limit specified: " << name;
+            
+        it = limitNode->attributes.find("upper");
+        if (it != limitNode->attributes.cend() && it->second.index() == 1)
+            limits.second = std::get<float>(it->second);
+        else
+            LOG_WARN << "No upper limit specified: " << name;
+    }
+    else
+        LOG_WARN << "No limits specified: " << name;
+
+    // add joint
+    LOG_INFO << "adding joint: " << name;
+    m_joints.emplace(name, std::make_shared<JointData>(name, parent, child, t_child_parent, axis, limits));
 
     return true;
 }
