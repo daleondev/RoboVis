@@ -27,7 +27,8 @@ public:
     inline static size_t numEntities() { return s_entities.size(); }
     inline static std::unordered_map<std::string, std::shared_ptr<Entity>>& getEntities() { return s_entities; }
 
-    static void onUpdate(const Timestep dt);
+    static void render(const Timestep dt);
+
     static bool onMouseLeave(MouseLeaveEvent& e);
     static bool onMouseMoved(MouseMovedEvent& e);
     static bool onMouseButtonPressed(MouseButtonPressedEvent& e);

@@ -42,7 +42,7 @@ class CameraController
 public:
     static void init(const float hFov, const float zNear = 0.3f, const float zFar = 1000.0f, const glm::mat4& t_camInit_world = glm::mat4(1.0f));
 
-    static void onUpdate(const Timestep ts);
+    static void update(const Timestep ts);
     static void onResize();
 
     static void stopInteraction();

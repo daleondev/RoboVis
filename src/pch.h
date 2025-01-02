@@ -1,9 +1,7 @@
-// OpenGL
+// glfw
 #include <GLFW/glfw3.h>
-#include <GLES3/gl3.h>
 
 // glm
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/euler_angles.hpp>
@@ -16,6 +14,11 @@
 #include <assimp/scene.h>
 #include <assimp/cimport.h>
 #include <assimp/postprocess.h>
+
+// imgui
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 
 // std
 #include <map>

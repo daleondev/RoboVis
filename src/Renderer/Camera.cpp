@@ -117,7 +117,7 @@ void CameraController::init(const float hFov, const float zNear, const float zFa
     updateProjection();
 }
 
-void CameraController::onUpdate(const Timestep dt)
+void CameraController::update(const Timestep dt)
 {
     if (Input::isKeyPressed(GLFW_KEY_A))
         s_camera.rotate(-200 * dt, {0.0f, 1.0f, 0.0f});

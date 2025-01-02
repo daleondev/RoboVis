@@ -89,9 +89,9 @@ bool Robot::setup(const std::string& sourceDir)
     return true;
 }
 
-void Robot::onUpdate(const Timestep dt)
+void Robot::update(const Timestep dt)
 {
-    auto pos = forwardTransform();
+    forwardTransform();
 }
 
 bool Robot::setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode)

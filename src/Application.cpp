@@ -6,6 +6,8 @@
 
 #include "Window/Window.h"
 
+#include "ImGui/ImGuiLayer.h"
+
 #include "Entities/Marker.h"
 #include "Entities/Mesh.h"
 
@@ -24,6 +26,7 @@ Application::Application()
     Window::create("Application", 800, 600);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
     Scene::init();
+    ImGuiLayer::init();
 
     signal(SIGTERM, Application::handleSignal);
     signal(SIGINT, Application::handleSignal);
@@ -31,6 +34,7 @@ Application::Application()
 
 Application::~Application()
 {
+    ImGuiLayer::shutdown();
     Window::shutdown();
 
     LOG_SHUTDOWN();
@@ -62,7 +66,7 @@ int Application::run(int argc, char **argv)
         const Timestep dt = time - m_lastFrameTime;
         m_lastFrameTime = time;
 
-        onUpdate(dt);
+        update(dt);
     }
 
     return 0;
@@ -74,10 +78,12 @@ void Application::close()
     m_running = false;
 }
 
-void Application::onUpdate(const Timestep dt)
+void Application::update(const Timestep dt)
 {
-    Window::onUpdate();
-    Scene::onUpdate(dt);
+    Window::update();
+
+    Scene::render(dt);
+    ImGuiLayer::render(dt);
 }
 
 void Application::onEvent(Event& e)

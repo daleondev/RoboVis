@@ -8,7 +8,7 @@ public:
     static void create(const std::string& title, const uint16_t width, const uint16_t height);
     static void shutdown();
 
-    static void onUpdate();
+    static void update();
 
     inline static uint32_t getWidth() { return s_data.width; }
     inline static uint32_t getHeight() { return s_data.height; }

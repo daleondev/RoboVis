@@ -6,6 +6,8 @@
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
 
+#include "Util/Log.h"
+
 GLFWwindow* Window::s_window;
 Window::WindowData Window::s_data;
 bool Window::s_initialized = false;
@@ -27,7 +29,7 @@ void Window::shutdown()
     glfwTerminate();
 }
 
-void Window::onUpdate()
+void Window::update()
 {
     glfwPollEvents();
     glfwSwapBuffers(s_window);
@@ -48,15 +50,23 @@ void Window::init()
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
 
     s_window = glfwCreateWindow(s_data.width, s_data.height, s_data.title.c_str(), nullptr, nullptr);
     glfwSetWindowUserPointer(s_window, &s_data);
     glfwMakeContextCurrent(s_window);
     setVSync(true);
 
+#ifdef __cpp_lib_format
+    LOG_INFO << "OpenGL:";
+    FMT_INFO("\tOpenGL Vendor: {}", (char*)glGetString(GL_VENDOR));
+    FMT_INFO("\tOpenGL Renderer: {}", (char*)glGetString(GL_RENDERER));
+    FMT_INFO("\tOpenGL Version: {}", (char*)glGetString(GL_VERSION));
+#endif
+
     glfwSetWindowSizeCallback(s_window, [](GLFWwindow* window, int width, int height) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
         data.width = width;
         data.height = height;
 
@@ -67,14 +77,14 @@ void Window::init()
     });
 
     glfwSetWindowCloseCallback(s_window, [](GLFWwindow* window) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
 
         WindowCloseEvent event;
         data.eventCallback(event);
     });
 
     glfwSetKeyCallback(s_window, [](GLFWwindow* window, int key, int scancode, int action, int mods) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
         
         switch(action)
         {
@@ -100,7 +110,7 @@ void Window::init()
     });
 
     glfwSetMouseButtonCallback(s_window, [](GLFWwindow* window, int button, int action, int mods) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
         
         switch(action)
         {
@@ -120,21 +130,21 @@ void Window::init()
     });
 
     glfwSetScrollCallback(s_window, [](GLFWwindow* window, double xOffset, double yOffset) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
         
         MouseScrolledEvent event(static_cast<float>(xOffset), static_cast<float>(yOffset));
         data.eventCallback(event);
     });
 
     glfwSetCursorPosCallback(s_window, [](GLFWwindow* window, double xPos, double yPos) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
         
         MouseMovedEvent event(static_cast<float>(xPos), static_cast<float>(yPos));
         data.eventCallback(event);
     });
 
     glfwSetCursorEnterCallback(s_window, [](GLFWwindow* window, int entered) -> void {
-        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(s_window));
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
         
         if (entered) {
             MouseEnterEvent event;

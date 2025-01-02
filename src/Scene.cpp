@@ -79,12 +79,12 @@ void Scene::deleteEntity(const std::string& name)
     s_entities.erase(it);
 }
 
-void Scene::onUpdate(const Timestep dt)
+void Scene::render(const Timestep dt)
 {   
     Renderer::clear({0.9f, 0.9f, 0.9f, 1.0f}); 
-    CameraController::onUpdate(dt);
+    CameraController::update(dt);
 
-    s_robot.onUpdate(dt);
+    s_robot.update(dt);
 
     for (const auto&[name, entity] : s_entities) {
 

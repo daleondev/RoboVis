@@ -11,6 +11,15 @@ project(RoboVis
 # glm
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/glm)
 
+# glfw
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/glfw)
+
+# assimp
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/assimp)
+
+# # imgui
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui)
+
 # ----------------------------------
 # preparations
 # ----------------------------------
@@ -32,9 +41,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${OUTPUT_DIR})
 # set sources and headers
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS src/*.h )
+file(GLOB SOURCES_IMGUI ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/*.cpp)
+file(GLOB HEADERS_IMGUI ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/*.h)
+set(SOURCES_IMGUI_BACKENDS ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_opengl3.cpp ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_glfw.cpp)
+set(HEADERS_IMGUI_BACKENDS ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_opengl3.h ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_glfw.h)
 
 # set include directories
-set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui)
 
 # set linked libraries
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -42,7 +55,7 @@ find_package(Threads REQUIRED)
 set(LIBS Threads::Threads glm glfw GLESv2 assimp)
 
 # set defines
-set(DEFINES GLFW_INCLUDE_ES3)
+set(DEFINES GLFW_INCLUDE_ES3 IMGUI_IMPL_OPENGL_ES3 IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL)
 
 # set precompiled header file
 set(PCH ${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h)
@@ -57,7 +70,7 @@ set(OPTIONS
 # ----------------------------------
 
 # executable
-add_executable(RoboVis ${SOURCES} ${HEADERS})
+add_executable(RoboVis ${SOURCES} ${HEADERS} ${SOURCES_IMGUI} ${HEADERS_IMGUI} ${SOURCES_IMGUI_BACKENDS} ${HEADERS_IMGUI_BACKENDS})
 
 # defines
 target_compile_definitions(RoboVis PRIVATE ${DEFINES})

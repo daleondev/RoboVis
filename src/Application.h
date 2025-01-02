@@ -14,13 +14,14 @@ public:
     int run(int argc, char **argv);
     void close();
 
-    void onUpdate(const Timestep dt);
-    void onEvent(Event& e);
+    void update(const Timestep dt);  
 
     static Application& get() { return *s_instance; }
 
-private:       
+private: 
+    void onEvent(Event& e);      
     bool onWindowClose(WindowCloseEvent& e);
+    
     static void handleSignal(int signal);
     
     bool m_running;

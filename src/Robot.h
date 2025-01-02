@@ -30,7 +30,7 @@ public:
 
     bool setup(const std::string& sourceDir);
 
-    void onUpdate(const Timestep dt);
+    void update(const Timestep dt);
 
 private:
     bool setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode);

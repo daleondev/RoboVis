@@ -1,0 +1,13 @@
+[submodule "3rdParty/glm"]
+	path = 3rdParty/glm
+	url = git@github.com:g-truc/glm.git
+[submodule "3rdParty/assimp"]
+	path = 3rdParty/assimp
+	url = git@github.com:assimp/assimp.git
+[submodule "3rdParty/glfw"]
+	path = 3rdParty/glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "3rdParty/imgui"]
+	path = 3rdParty/imgui
+	url = git@github.com:ocornut/imgui.git
+	branch = docking
