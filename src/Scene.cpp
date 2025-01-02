@@ -84,6 +84,8 @@ void Scene::onUpdate(const Timestep dt)
     Renderer::clear({0.9f, 0.9f, 0.9f, 1.0f}); 
     CameraController::onUpdate(dt);
 
+    s_robot.onUpdate(dt);
+
     for (const auto&[name, entity] : s_entities) {
 
         if (Input::isKeyPressed(GLFW_KEY_LEFT))

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Entities/Mesh.h"
+#include "Entities/Marker.h"
 
 #include "Xml/XmlParser.h"
 
@@ -8,6 +9,7 @@ struct LinkData
 {
     std::string name;
     std::shared_ptr<Mesh> mesh;
+    std::shared_ptr<Marker> frame;
 };
 
 struct JointData
@@ -28,14 +30,18 @@ public:
 
     bool setup(const std::string& sourceDir);
 
+    void onUpdate(const Timestep dt);
+
 private:
     bool setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode);
     bool setupJoint(const std::string& name, const XmlNode& jointNode);
 
+    glm::mat4 forwardTransform();
+
     std::string m_name;
     
     std::unordered_map<std::string, std::shared_ptr<LinkData>> m_links;
-    std::unordered_map<std::string, std::shared_ptr<JointData>> m_joints;
+    std::vector<std::shared_ptr<JointData>> m_joints;
     std::vector<float> m_jointValues;
 
 };

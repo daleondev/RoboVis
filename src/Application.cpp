@@ -50,7 +50,6 @@ int Application::run(int argc, char **argv)
 
     // todo: change entity type
     std::shared_ptr<Entity> dragMarker = Scene::createMarker("DragMarker");
-    // dragMarker->scale({5.0f, 5.0f, 5.0f});
     dragMarker->setVisible(false);
 
     if (!Scene::createRobot(argv[1])) {

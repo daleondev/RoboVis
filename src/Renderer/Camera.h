@@ -16,12 +16,12 @@ public:
     void reset();
 
     void setTranslation(const glm::vec3& p_world);
-    void setRotation(const float angle, const glm::vec3& l_axis_world);
+    void setRotation(const float angle, const glm::vec3& v_axis_world);
     void setTransformation(const glm::mat4& t_cam_world);
 
-    void translateWorld(const glm::vec3& l_world);
-    void translate(const glm::vec3& l_cam);
-    void rotate(const float angle, const glm::vec3& l_axis_cam);
+    void translateWorld(const glm::vec3& v_world);
+    void translate(const glm::vec3& v_cam);
+    void rotate(const float angle, const glm::vec3& v_axis_cam);
     void rotate(const glm::mat3& R);
     void transform(const glm::mat4& transformation);  
 
@@ -74,8 +74,8 @@ private:
     static glm::mat4 s_camPosPrev;
     static glm::vec3 s_dragPos;
 
-    inline static const float s_scrollFactor = 5.0f;
-    inline static const float s_dragFactor = 0.005f;
-    inline static const float s_rotFactor = 0.2f;
+    inline static constexpr float s_scrollFactor = 1.0f;
+    inline static constexpr float s_dragFactor = 0.005f;
+    inline static constexpr float s_rotFactor = 0.2f;
     
 };

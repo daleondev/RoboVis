@@ -89,12 +89,17 @@ bool Robot::setup(const std::string& sourceDir)
     return true;
 }
 
+void Robot::onUpdate(const Timestep dt)
+{
+    auto pos = forwardTransform();
+}
+
 bool Robot::setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode)
 {
     // extract node with visual data
     std::optional<XmlNode> visualNode;
     for (const auto& child : linkNode.children) {
-        if (child.tag == "visual")
+        if (child.tag == "collision")
             visualNode = child;
         else if (!visualNode && child.tag == "collision")
             visualNode = child;
@@ -182,9 +187,11 @@ bool Robot::setupLink(const std::string& name, const std::filesystem::path& mesh
     const auto mesh = Scene::createMesh(name, meshSource, t_mesh_world);
     aiReleaseImport(meshSource);
 
+    const auto frame = Scene::createMarker("frame_" + name);
+
     // add link
     LOG_INFO << "adding link: " << name;
-    m_links.emplace(name, std::make_shared<LinkData>(name, mesh));
+    m_links.emplace(name, std::make_shared<LinkData>(name, mesh, frame));
 
     return true;
 }
@@ -310,7 +317,28 @@ bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
 
     // add joint
     LOG_INFO << "adding joint: " << name;
-    m_joints.emplace(name, std::make_shared<JointData>(name, parent, child, t_child_parent, axis, limits));
+    m_joints.push_back(std::make_shared<JointData>(name, parent, child, t_child_parent, axis, limits));
+    m_jointValues.push_back(0.0f);
 
     return true;
+}
+
+glm::mat4 Robot::forwardTransform()
+{
+    glm::mat4 t_child_world(1.0f);
+    for (size_t i = 0; i < m_joints.size(); ++i) {
+        auto& joint = m_joints[i];
+
+        auto& parentLink = joint->parent;
+        auto& childLink = joint->child;
+        
+        const auto t_parent_world = parentLink->mesh->getModel();
+        t_child_world = joint->parentToChild * t_parent_world;
+        t_child_world = glm::mat4(angleAxisF(m_jointValues[i], joint->rotationAxis)) * t_child_world;
+          
+        childLink->mesh->setTransformation(t_child_world);
+        parentLink->frame->setTransformation(t_child_world);
+    }
+
+    return t_child_world;
 }

@@ -30,6 +30,11 @@ static void printMat(const glm::mat3& mat)
     LOG_TRACE << ss.str();
 }
 
+static void printVec(const glm::vec4& vec)
+{
+    LOG_TRACE << strPrintf("%5.5f %-5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2], vec[3]);
+}
+
 static void printVec(const glm::vec3& vec)
 {
     LOG_TRACE << strPrintf("%5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2]);
@@ -44,6 +49,47 @@ static float rad2deg(const float rad)
 {
     return rad * 180.0f / static_cast<float>(M_PI);
 };
+
+static glm::mat4& setMat4Translation(glm::mat4& mat, const glm::vec3& p)
+{
+    for (size_t i = 0; i < 3; ++i)
+        mat[i][3] = p[i];
+    return mat;
+}
+
+static glm::mat4& setMat4Rotation(glm::mat4& mat, const glm::mat3& r)
+{
+    for (size_t i = 0; i < 3; ++i)
+        for (size_t j = 0; j < 3; ++j)
+            mat[i][j] = r[i][j];
+    return mat;
+}
+
+
+static glm::vec3 getMat4Translation(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 3);
+}
+
+static glm::vec3 getMat4AxisZ(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 2);
+}
+
+static glm::vec3 getMat4AxisY(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 1);
+}
+
+static glm::vec3 getMat4AxisX(const glm::mat4& mat)
+{
+    return MAT_COL3(mat, 0);
+}
+
+static glm::mat3 getMat4Rotation(const glm::mat4& mat)
+{
+    return MAT3(mat, 0, 0);
+}
 
 static glm::vec4 extendedCross(const glm::vec4& A, const glm::vec4& B, const glm::vec4& C)
 {
@@ -90,16 +136,16 @@ static std::tuple<glm::vec3, glm::vec3> trianglePlane(const std::array<glm::vec3
     return {n_plane, p_plane};
 }
 
-static std::optional<glm::vec3> intersectionLinePlane(const glm::vec3& n_plane, const glm::vec3& p_plane, const glm::vec3& l_line, const glm::vec3& p_line)
+static std::optional<glm::vec3> intersectionLinePlane(const glm::vec3& n_plane, const glm::vec3& p_plane, const glm::vec3& v_line, const glm::vec3& p_line)
 {
     // https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
     const float numerator = glm::dot(p_plane-p_line, n_plane);
     if (numerator == 0)
         return {};
 
-    const float denominator = glm::dot(l_line, n_plane);
+    const float denominator = glm::dot(v_line, n_plane);
     const float d = numerator/denominator;
-    const glm::vec3 p = p_line+l_line*d;
+    const glm::vec3 p = p_line+v_line*d;
 
     return p;
 }
@@ -114,22 +160,36 @@ static int16_t location(const glm::vec3& N, const glm::vec3& P)
     return 0;
 }
 
-static void rotateAroundPoint(const glm::vec3& p_orig, const glm::mat3& r, glm::vec3& p_rot)
+static void rotateAroundPoint(const glm::vec3& p_orig_world, const glm::mat3& r_rot, glm::vec3& p_rot_world)
 {
-    // glm::vec3 translatedPoint = p_rot - p_orig;
-    // glm::vec3 rotatedPoint = r * translatedPoint;
-    // glm::vec3 finalPoint = rotatedPoint + p_orig;
-    // p_rot = finalPoint;
+    glm::mat4 t_rot_world(1.0f);
+    setMat4Translation(t_rot_world, p_rot_world);
 
-    glm::mat4 mat(1.0f);
-    mat[0][3] = p_rot[0] - p_orig[0];
-    mat[1][3] = p_rot[1] - p_orig[1];
-    mat[2][3] = p_rot[2] - p_orig[2];
+    auto v_rotToOrig_world = p_orig_world - p_rot_world;
+    const auto t_world_rot = glm::inverseTranspose(t_rot_world);   
+    const auto v_rotToOrig_rot = t_world_rot * glm::vec4(v_rotToOrig_world, 0.0f);
 
-    mat *= glm::mat4(r);
-    p_rot[0] = mat[0][3];
-    p_rot[1] = mat[1][3];
-    p_rot[2] = mat[2][3];
+    setMat4Translation(t_rot_world, p_rot_world + v_rotToOrig_world);
+    t_rot_world = glm::mat4(r_rot) * t_rot_world;
+
+    v_rotToOrig_world = getMat4AxisX(t_rot_world)*v_rotToOrig_rot.x + getMat4AxisY(t_rot_world)*v_rotToOrig_rot.y + getMat4AxisZ(t_rot_world)*v_rotToOrig_rot.z;
+    p_rot_world = getMat4Translation(t_rot_world) - v_rotToOrig_world;
+}
+
+static void rotateAroundPoint(const glm::vec3& p_orig_world, const glm::mat3& r_rot, glm::mat4& t_rot_world)
+{
+    auto p_rot_world = getMat4Translation(t_rot_world);
+
+    auto v_rotToOrig_world = p_orig_world - p_rot_world;
+    const auto t_world_rot = glm::inverseTranspose(t_rot_world);   
+    const auto v_rotToOrig_rot = t_world_rot * glm::vec4(v_rotToOrig_world, 0.0f);
+
+    setMat4Translation(t_rot_world, p_rot_world + v_rotToOrig_world);
+    t_rot_world = glm::mat4(r_rot) * t_rot_world;
+
+    v_rotToOrig_world = getMat4AxisX(t_rot_world)*v_rotToOrig_rot.x + getMat4AxisY(t_rot_world)*v_rotToOrig_rot.y + getMat4AxisZ(t_rot_world)*v_rotToOrig_rot.z;
+    p_rot_world = getMat4Translation(t_rot_world) - v_rotToOrig_world;
+    setMat4Translation(t_rot_world, p_rot_world);
 }
 
 static bool pointInTriangle(const glm::vec3& n_plane, const glm::vec3& p_plane, std::array<glm::vec3, 3> p_tri, glm::vec3 p_check)
@@ -204,16 +264,16 @@ static glm::mat3 rotZ(const float angle)
     );
 }
 
-static glm::mat3 angleAxisF(const float angle, glm::vec3 l_axis)
+static glm::mat3 angleAxisF(const float angle, glm::vec3 v_axis)
 {
-    l_axis = glm::normalize(l_axis);
+    v_axis = glm::normalize(v_axis);
     const auto c = cosf(angle);
     const auto s = sinf(angle);
     const auto t1 = 1-c;
     return glm::mat3(
-        c + l_axis[0]*l_axis[0]*t1          , l_axis[0]*l_axis[1]*t1 - l_axis[2]*s, l_axis[0]*l_axis[2]*t1 + l_axis[1]*s,
-        l_axis[1]*l_axis[0]*t1 + l_axis[2]*s, c + l_axis[1]*l_axis[1]*t1          , l_axis[1]*l_axis[2]*t1 - l_axis[0]*s,
-        l_axis[2]*l_axis[0]*t1 - l_axis[1]*s, l_axis[2]*l_axis[1]*t1 + l_axis[0]*s,           c + l_axis[2]*l_axis[2]*t1
+        c + v_axis[0]*v_axis[0]*t1          , v_axis[0]*v_axis[1]*t1 - v_axis[2]*s, v_axis[0]*v_axis[2]*t1 + v_axis[1]*s,
+        v_axis[1]*v_axis[0]*t1 + v_axis[2]*s, c + v_axis[1]*v_axis[1]*t1          , v_axis[1]*v_axis[2]*t1 - v_axis[0]*s,
+        v_axis[2]*v_axis[0]*t1 - v_axis[1]*s, v_axis[2]*v_axis[1]*t1 + v_axis[0]*s,           c + v_axis[2]*v_axis[2]*t1
     );
 }
 
@@ -240,47 +300,6 @@ static glm::mat3 eulerZYXext(const glm::vec3& zyx)
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-static glm::mat4& setMat4Translation(glm::mat4& mat, const glm::vec3& p)
-{
-    for (size_t i = 0; i < 3; ++i)
-        mat[i][3] = p[i];
-    return mat;
-}
-
-static glm::mat4& setMat4Rotation(glm::mat4& mat, const glm::mat3& r)
-{
-    for (size_t i = 0; i < 3; ++i)
-        for (size_t j = 0; j < 3; ++j)
-            mat[i][j] = r[i][j];
-    return mat;
-}
-
-
-static glm::vec3 getMat4Translation(const glm::mat4& mat)
-{
-    return MAT_COL3(mat, 3);
-}
-
-static glm::vec3 getMat4AxisZ(const glm::mat4& mat)
-{
-    return MAT_COL3(mat, 2);
-}
-
-static glm::vec3 getMat4AxisY(const glm::mat4& mat)
-{
-    return MAT_COL3(mat, 1);
-}
-
-static glm::vec3 getMat4AxisX(const glm::mat4& mat)
-{
-    return MAT_COL3(mat, 0);
-}
-
-static glm::mat3 getMat4Rotation(const glm::mat4& mat)
-{
-    return MAT3(mat, 0, 0);
 }
 
 static glm::vec3 strToVec3(const std::string& str)
