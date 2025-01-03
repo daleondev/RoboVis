@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Entities/Mesh.h"
-#include "Entities/Marker.h"
+#include "Entities/Frame.h"
 
 #include "Xml/XmlParser.h"
 
@@ -9,7 +9,7 @@ struct LinkData
 {
     std::string name;
     std::shared_ptr<Mesh> mesh;
-    std::shared_ptr<Marker> frame;
+    std::shared_ptr<Frame> frame;
 };
 
 struct JointData

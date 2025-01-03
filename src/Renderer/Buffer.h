@@ -1,6 +1,6 @@
 #pragma once
 
-enum class ShaderDataType : uint8_t {
+enum class ShaderDataType {
     None = 0,
     Bool,
     Float,
@@ -22,21 +22,21 @@ enum class ShaderDataType : uint8_t {
 static size_t shaderDataTypeSize(const ShaderDataType type)
 {
     switch(type) {
-        case ShaderDataType::Bool:       return sizeof(bool);
-        case ShaderDataType::Float:      return sizeof(float);
-        case ShaderDataType::Float2:     return sizeof(float)*2;
-        case ShaderDataType::Float3:     return sizeof(float)*3;
-        case ShaderDataType::Float4:     return sizeof(float)*4;
-        case ShaderDataType::Float2x2:   return sizeof(float)*2*2;
-        case ShaderDataType::Float3x3:   return sizeof(float)*3*3;
-        case ShaderDataType::Float4x4:   return sizeof(float)*4*4;
-        case ShaderDataType::Int:        return sizeof(int);
-        case ShaderDataType::Int2:       return sizeof(int)*2;
-        case ShaderDataType::Int3:       return sizeof(int)*3;
-        case ShaderDataType::Int4:       return sizeof(int)*4;
-        case ShaderDataType::Int2x2:     return sizeof(int)*2*2;
-        case ShaderDataType::Int3x3:     return sizeof(int)*3*3;
-        case ShaderDataType::Int4x4:     return sizeof(int)*4*4;
+        case ShaderDataType::Bool:       return sizeof(GLfloat);
+        case ShaderDataType::Float:      return sizeof(GLfloat);
+        case ShaderDataType::Float2:     return sizeof(GLuint)*2;
+        case ShaderDataType::Float3:     return sizeof(GLfloat)*3;
+        case ShaderDataType::Float4:     return sizeof(GLfloat)*4;
+        case ShaderDataType::Float2x2:   return sizeof(GLfloat)*2*2;
+        case ShaderDataType::Float3x3:   return sizeof(GLfloat)*3*3;
+        case ShaderDataType::Float4x4:   return sizeof(GLfloat)*4*4;
+        case ShaderDataType::Int:        return sizeof(GLint);
+        case ShaderDataType::Int2:       return sizeof(GLint)*2;
+        case ShaderDataType::Int3:       return sizeof(GLint)*3;
+        case ShaderDataType::Int4:       return sizeof(GLint)*4;
+        case ShaderDataType::Int2x2:     return sizeof(GLint)*2*2;
+        case ShaderDataType::Int3x3:     return sizeof(GLint)*3*3;
+        case ShaderDataType::Int4x4:     return sizeof(GLint)*4*4;
         case ShaderDataType::None:       return 0;
     }
 
@@ -126,7 +126,7 @@ public:
     VertexBuffer();
     ~VertexBuffer();
 
-    void allocate(const float* vertices, const size_t count);
+    void allocate(const GLfloat* vertices, const size_t count);
 
     void bind() const;
     void release() const;
@@ -135,7 +135,7 @@ public:
     inline const BufferLayout& getLayout() const { return m_layout; }
 
 private: 
-    uint32_t m_buffer;
+    GLuint m_buffer;
     BufferLayout m_layout;
 };
 
@@ -145,7 +145,7 @@ public:
     IndexBuffer();
     ~IndexBuffer();
 
-    void allocate(const uint16_t* indices, const size_t count);
+    void allocate(const GLushort* indices, const size_t count);
 
     void bind() const;
     void release() const;
@@ -153,6 +153,6 @@ public:
     inline size_t getCount() const { return m_count; }
 
 private: 
-    uint32_t m_buffer;
+    GLuint m_buffer;
     size_t m_count;
 };

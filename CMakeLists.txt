@@ -40,14 +40,16 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${OUTPUT_DIR})
 
 # set sources and headers
 file(GLOB_RECURSE SOURCES src/*.cpp)
-file(GLOB_RECURSE HEADERS src/*.h )
+file(GLOB_RECURSE HEADERS src/*.h)
 file(GLOB SOURCES_IMGUI ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/*.cpp)
 file(GLOB HEADERS_IMGUI ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/*.h)
 set(SOURCES_IMGUI_BACKENDS ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_opengl3.cpp ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_glfw.cpp)
 set(HEADERS_IMGUI_BACKENDS ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_opengl3.h ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui/backends/imgui_impl_glfw.h)
+set(SOURCE_STB ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image/stb_image.cpp)
+set(HEADER_STB ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image/stb_image.h)
 
 # set include directories
-set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui)
+set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image)
 
 # set linked libraries
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -70,7 +72,7 @@ set(OPTIONS
 # ----------------------------------
 
 # executable
-add_executable(RoboVis ${SOURCES} ${HEADERS} ${SOURCES_IMGUI} ${HEADERS_IMGUI} ${SOURCES_IMGUI_BACKENDS} ${HEADERS_IMGUI_BACKENDS})
+add_executable(RoboVis ${SOURCES} ${HEADERS} ${SOURCES_IMGUI} ${HEADERS_IMGUI} ${SOURCES_IMGUI_BACKENDS} ${HEADERS_IMGUI_BACKENDS} ${SOURCE_STB} ${HEADER_STB})
 
 # defines
 target_compile_definitions(RoboVis PRIVATE ${DEFINES})

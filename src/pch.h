@@ -20,6 +20,9 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
+// stb_image
+#include <stb_image.h>
+
 // std
 #include <map>
 #include <ctime>

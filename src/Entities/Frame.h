@@ -4,11 +4,11 @@
 
 #include "Renderer/VertexArray.h"
 
-class Marker : public Entity {
+class Frame : public Entity {
 
 public:
-    Marker(const std::shared_ptr<Shader>& shader);
-    virtual ~Marker();
+    Frame(const std::shared_ptr<Shader>& shader);
+    virtual ~Frame();
 
     virtual void draw(const std::optional<Camera>& camera = {}) override;
 

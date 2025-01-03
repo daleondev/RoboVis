@@ -25,6 +25,8 @@ Mesh::Mesh(const std::shared_ptr<Shader>& shader, const aiScene* source, const g
             uint32_t size; 
             source->mMaterials[meshSource->mMaterialIndex]->Get(AI_MATKEY_COLOR_DIFFUSE, glm::value_ptr(color), &size);
         }
+        else 
+            LOG_WARN << "Material not valid: " << meshSource->mMaterialIndex;
 
         meshData.vertices.resize(meshSource->mNumVertices);
         for (size_t j = 0; j < meshData.vertices.size(); ++j) {

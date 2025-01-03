@@ -8,7 +8,7 @@
 
 #include "ImGui/ImGuiLayer.h"
 
-#include "Entities/Marker.h"
+#include "Entities/Frame.h"
 #include "Entities/Mesh.h"
 
 #include "Util/Log.h"
@@ -26,7 +26,7 @@ Application::Application()
     Window::create("Application", 800, 600);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
     Scene::init();
-    ImGuiLayer::init();
+    // ImGuiLayer::init();
 
     signal(SIGTERM, Application::handleSignal);
     signal(SIGINT, Application::handleSignal);
@@ -34,7 +34,7 @@ Application::Application()
 
 Application::~Application()
 {
-    ImGuiLayer::shutdown();
+    // ImGuiLayer::shutdown();
     Window::shutdown();
 
     LOG_SHUTDOWN();
@@ -49,12 +49,12 @@ int Application::run(int argc, char **argv)
 		return 1;
 	}
 
-    std::shared_ptr<Entity> origin = Scene::createMarker("Origin");
+    std::shared_ptr<Entity> origin = Scene::createFrame("Origin");
     origin->scale({0.75f, 0.75f, 0.75f});
 
     // todo: change entity type
-    std::shared_ptr<Entity> dragMarker = Scene::createMarker("DragMarker");
-    dragMarker->setVisible(false);
+    std::shared_ptr<Entity> dragFrame = Scene::createFrame("DragFrame");
+    dragFrame->setVisible(false);
 
     if (!Scene::createRobot(argv[1])) {
         LOG_FATAL << "Failed to create the robot.";
@@ -83,7 +83,7 @@ void Application::update(const Timestep dt)
     Window::update();
 
     Scene::render(dt);
-    ImGuiLayer::render(dt);
+    // ImGuiLayer::render(dt);
 }
 
 void Application::onEvent(Event& e)

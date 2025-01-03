@@ -1,21 +1,21 @@
 #include "pch.h"
 
-#include "Marker.h"
+#include "Frame.h"
 
 #include "Renderer/Renderer.h"
 
-Marker::Marker(const std::shared_ptr<Shader>& shader)
+Frame::Frame(const std::shared_ptr<Shader>& shader)
     : Entity(shader)
 {
     createBuffers();
 }
 
-Marker::~Marker()
+Frame::~Frame()
 {
     m_vertexArray.release();
 }
 
-void Marker::draw(const std::optional<Camera>& camera)
+void Frame::draw(const std::optional<Camera>& camera)
 {
     if (!m_visible)
         return;
@@ -26,44 +26,38 @@ void Marker::draw(const std::optional<Camera>& camera)
     Renderer::draw(m_shader, m_vertexArray);
 }
 
-void Marker::createBuffers()
+void Frame::createBuffers()
 {
-    struct Vertex
-    {
-        glm::vec3 position;
-        glm::vec4 color;
+    constexpr std::array<GLfloat, 8 * 3 * 7> vertices = {
+        -0.025f, -0.025f,  0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+         1.0f,   -0.025f,  0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+         1.0f,    0.025f,  0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+        -0.025f,  0.025f,  0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+        -0.025f, -0.025f, -0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+        -0.025f,  0.025f, -0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+         1.0f,   -0.025f, -0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+         1.0f,    0.025f, -0.025f,      1.0f, 0.0f, 0.0f, 1.0f,
+
+        -0.025f, -0.025f,  0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+         0.025f, -0.025f,  0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+         0.025f,  1.0f,    0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+        -0.025f,  1.0f,    0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+        -0.025f, -0.025f, -0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+        -0.025f,  1.0f,   -0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+         0.025f, -0.025f, -0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+         0.025f,  1.0f,   -0.025f,      0.0f, 1.0f, 0.0f, 1.0f,
+
+        -0.025f, -0.025f,  1.0f,        0.0f, 0.0f, 1.0f, 1.0f,
+         0.025f, -0.025f,  1.0f,        0.0f, 0.0f, 1.0f, 1.0f,
+         0.025f,  0.025f,  1.0f,        0.0f, 0.0f, 1.0f, 1.0f,
+        -0.025f,  0.025f,  1.0f,        0.0f, 0.0f, 1.0f, 1.0f,
+        -0.025f, -0.025f, -0.025f,      0.0f, 0.0f, 1.0f, 1.0f,
+        -0.025f,  0.025f, -0.025f,      0.0f, 0.0f, 1.0f, 1.0f,
+         0.025f, -0.025f, -0.025f,      0.0f, 0.0f, 1.0f, 1.0f,
+         0.025f,  0.025f, -0.025f,      0.0f, 0.0f, 1.0f, 1.0f    
     };
 
-    std::array<Vertex, 8 * 3> vertices = {
-        Vertex{{-0.025f, -0.025f,   0.025f},    {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{1.0f, -0.025f,      0.025f},    {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{1.0f,  0.025f,      0.025f},    {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{-0.025f,  0.025f,   0.025f},    {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{-0.025f, -0.025f,   -0.025f},   {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{-0.025f,  0.025f,   -0.025f},   {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{1.0f, -0.025f,      -0.025f},   {1.0f, 0.0f, 0.0f, 1.0f}},
-        Vertex{{1.0f,  0.025f,      -0.025f},   {1.0f, 0.0f, 0.0f, 1.0f}},
-
-        Vertex{{-0.025f, -0.025f,   0.025f},    {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{ 0.025f, -0.025f,   0.025f},    {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{ 0.025f, 1.0f,      0.025f},    {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{-0.025f, 1.0f,      0.025f},    {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{-0.025f, -0.025f,   -0.025f},   {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{-0.025f, 1.0f,      -0.025f},   {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{ 0.025f, -0.025f,   -0.025f},   {0.0f, 1.0f, 0.0f, 1.0f}},
-        Vertex{{ 0.025f, 1.0f,      -0.025f},   {0.0f, 1.0f, 0.0f, 1.0f}},
-
-        Vertex{{-0.025f, -0.025f, 1.0f},        {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{ 0.025f, -0.025f, 1.0f},        {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{ 0.025f,  0.025f, 1.0f},        {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{-0.025f,  0.025f, 1.0f},        {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{-0.025f, -0.025f, -0.025f},     {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{-0.025f,  0.025f, -0.025f},     {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{ 0.025f, -0.025f, -0.025f},     {0.0f, 0.0f, 1.0f, 1.0f}},
-        Vertex{{ 0.025f,  0.025f, -0.025f},     {0.0f, 0.0f, 1.0f, 1.0f}}
-    };
-
-    std::array<GLushort, 12 * 3 * 3> indices = {
+    constexpr std::array<GLushort, 12 * 3 * 3> indices = {
             8 * 0 + 0, 8 * 0 + 1, 8 * 0 + 2,
             8 * 0 + 2, 8 * 0 + 3, 8 * 0 + 0,
             8 * 0 + 4, 8 * 0 + 0, 8 * 0 + 3,
@@ -105,7 +99,7 @@ void Marker::createBuffers()
     };
 
     std::shared_ptr<VertexBuffer> vertexBuffer = std::make_shared<VertexBuffer>();
-    vertexBuffer->allocate(reinterpret_cast<const float*>(vertices.data()), 8 * 3 * 7);
+    vertexBuffer->allocate(vertices.data(), vertices.size());
     BufferLayout layout = {
         { ShaderDataType::Float3, "a_position" },
         { ShaderDataType::Float4, "a_color" }
@@ -114,6 +108,6 @@ void Marker::createBuffers()
     m_vertexArray.addVertexBuffer(vertexBuffer);
 
     std::shared_ptr<IndexBuffer> indexBuffer = std::make_shared<IndexBuffer>();
-    indexBuffer->allocate(indices.data(), 12 * 3 * 3);
+    indexBuffer->allocate(indices.data(), indices.size());
     m_vertexArray.setIndexBuffer(indexBuffer);
 }

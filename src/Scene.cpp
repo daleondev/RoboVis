@@ -6,13 +6,24 @@
 
 #include "Renderer/Renderer.h"
 
-#include "Entities/Marker.h"
+#include "Entities/Frame.h"
 #include "Entities/Mesh.h"
+#include "Entities/Plane.h"
 
 #include "Util/geometry.h"
 
 std::unordered_map<std::string, std::shared_ptr<Entity>> Scene::s_entities;
 Robot Scene::s_robot;
+
+static uint32_t vecToRGBA(const glm::vec4& color)
+{
+	const uint8_t r = static_cast<uint8_t>(color.r * 255.0f);
+	const uint8_t g = static_cast<uint8_t>(color.g * 255.0f);
+	const uint8_t b = static_cast<uint8_t>(color.b * 255.0f);
+	const uint8_t a = static_cast<uint8_t>(color.a * 255.0f);
+
+	return (a << 24) | (b << 16) | (g << 8) | r;
+}
 
 void Scene::init()
 {
@@ -22,6 +33,23 @@ void Scene::init()
     glm::mat4 t_cam_world(1.0f);
     setMat4Rotation(t_cam_world, r_cam_world);
     setMat4Translation(t_cam_world, p_cam_world);
+
+    constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
+    constexpr glm::vec4 dark(0.8f, 0.8f, 0.8f, 1.0f);
+
+    const uint32_t texWidth = 12;
+    const uint32_t texHeight = 12;
+    std::vector<uint32_t> texData(texWidth*texHeight);
+    for (uint32_t i = 0; i < texWidth; ++i) {
+        for (uint32_t j = 0; j < texHeight; ++j) {
+            if (i%2==0)
+                texData[i*texWidth + j] = vecToRGBA(j%2 ? dark : light);
+            else
+                texData[i*texWidth + j] = vecToRGBA(j%2 ? light : dark);
+        }
+    }
+    auto texture = TextureLibrary::create("Checkerboard", texData, texWidth, texHeight);
+    createPlane("Plane", texture, glm::scale(glm::mat4(1.0f), {12.0f, 12.0f, 12.0f}));
 
     CameraController::init(70.0f, 0.3f, 1000.0f, t_cam_world);
     Renderer::init();
@@ -35,10 +63,10 @@ bool Scene::createRobot(const std::string& sourceDir)
 std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("Mesh"))
-        shader = ShaderLibrary::get("Mesh");
+    if (ShaderLibrary::exists("Color"))
+        shader = ShaderLibrary::get("Color");
     else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh", "Mesh");
+        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
 
     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(shader, source, t_mesh_world);
     mesh->setTransformation(initialTransformation);
@@ -46,18 +74,46 @@ std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* 
     return mesh;
 }
 
-std::shared_ptr<Marker> Scene::createMarker(const std::string& name, const glm::mat4& initialTransformation)
+std::shared_ptr<Frame> Scene::createFrame(const std::string& name, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("Marker"))
-        shader = ShaderLibrary::get("Marker");
+    if (ShaderLibrary::exists("Color"))
+        shader = ShaderLibrary::get("Color");
     else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Marker", "Marker");
+        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
 
-    std::shared_ptr<Marker> marker = std::make_shared<Marker>(shader);
-    marker->setTransformation(initialTransformation);
-    addEntity(name, marker);
-    return marker;
+    std::shared_ptr<Frame> frame = std::make_shared<Frame>(shader);
+    frame->setTransformation(initialTransformation);
+    addEntity(name, frame);
+    return frame;
+}
+
+std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const std::shared_ptr<Texture2D>& texture, const glm::mat4& initialTransformation)
+{
+    std::shared_ptr<Shader> shader;
+    if (ShaderLibrary::exists("Texture"))
+        shader = ShaderLibrary::get("Texture");
+    else
+        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Texture", "Texture");
+
+    std::shared_ptr<Plane> plane = std::make_shared<Plane>(shader, texture);
+    plane->setTransformation(initialTransformation);
+    addEntity(name, plane);
+    return plane;
+}
+
+std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation)
+{
+    std::shared_ptr<Shader> shader;
+    if (ShaderLibrary::exists("Color"))
+        shader = ShaderLibrary::get("Color");
+    else
+        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Texture", "Color");
+
+    std::shared_ptr<Plane> plane = std::make_shared<Plane>(shader, color);
+    plane->setTransformation(initialTransformation);
+    addEntity(name, plane);
+    return plane;
 }
 
 void Scene::addEntity(const std::string& name, const std::shared_ptr<Entity>& entity) 
@@ -81,7 +137,7 @@ void Scene::deleteEntity(const std::string& name)
 
 void Scene::render(const Timestep dt)
 {   
-    Renderer::clear({0.9f, 0.9f, 0.9f, 1.0f}); 
+    Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);
 
     s_robot.update(dt);
@@ -136,8 +192,8 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
         }
     }
 
-    if (CameraController::isDragging() && entityExists("DragMarker")) {
-        auto marker = getEntity("DragMarker");
+    if (CameraController::isDragging() && entityExists("DragFrame")) {
+        auto marker = getEntity("DragFrame");
         marker->setTranslation(CameraController::getDraggingPosition());
         marker->setVisible(true);
     }
@@ -156,8 +212,8 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
             CameraController::stopDraggingRot();
-            if (entityExists("DragMarker"))
-                getEntity("DragMarker")->setVisible(false);
+            if (entityExists("DragFrame"))
+                getEntity("DragFrame")->setVisible(false);
             break;
         }
     }

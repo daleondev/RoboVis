@@ -187,7 +187,7 @@ bool Robot::setupLink(const std::string& name, const std::filesystem::path& mesh
     const auto mesh = Scene::createMesh(name, meshSource, t_mesh_world);
     aiReleaseImport(meshSource);
 
-    const auto frame = Scene::createMarker("frame_" + name);
+    const auto frame = Scene::createFrame("frame_" + name);
 
     // add link
     LOG_INFO << "adding link: " << name;

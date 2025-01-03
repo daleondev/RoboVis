@@ -12,10 +12,10 @@ VertexBuffer::~VertexBuffer()
     glDeleteBuffers(1, &m_buffer);
 }
 
-void VertexBuffer::allocate(const float* vertices, const size_t count)
+void VertexBuffer::allocate(const GLfloat* vertices, const size_t count)
 {
     glBindBuffer(GL_ARRAY_BUFFER, m_buffer);
-    glBufferData(GL_ARRAY_BUFFER, count*sizeof(float), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, count*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 }
 
 void VertexBuffer::bind() const
@@ -41,11 +41,11 @@ IndexBuffer::~IndexBuffer()
     glDeleteBuffers(1, &m_buffer);
 }
 
-void IndexBuffer::allocate(const uint16_t* indices, const size_t count)
+void IndexBuffer::allocate(const GLushort* indices, const size_t count)
 {
     m_count = count;
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, count*sizeof(uint16_t), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, count*sizeof(GLushort), indices, GL_STATIC_DRAW);
 }
 
 void IndexBuffer::bind() const
