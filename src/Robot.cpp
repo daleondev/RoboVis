@@ -3,6 +3,8 @@
 #include "Robot.h"
 #include "Scene.h"
 
+#include "ImGui/ImGuiLayer.h"
+
 #include "Util/geometry.h"
 #include "Util/Log.h"
 
@@ -99,7 +101,7 @@ bool Robot::setupLink(const std::string& name, const std::filesystem::path& mesh
     // extract node with visual data
     std::optional<XmlNode> visualNode;
     for (const auto& child : linkNode.children) {
-        if (child.tag == "collision")
+        if (child.tag == "visual")
             visualNode = child;
         else if (!visualNode && child.tag == "collision")
             visualNode = child;
@@ -130,7 +132,7 @@ bool Robot::setupLink(const std::string& name, const std::filesystem::path& mesh
         auto it = originNode->attributes.find("xyz");
         glm::vec3 p_mesh_world(0.0f);
         if (it != originNode->attributes.cend() && it->second.index() == 2)
-            p_mesh_world = strToVec3(std::get<std::string>(it->second));
+            p_mesh_world = 1000.0f*strToVec3(std::get<std::string>(it->second));
         else
             LOG_WARN << "No xyz specified: " << name;
 
@@ -183,9 +185,11 @@ bool Robot::setupLink(const std::string& name, const std::filesystem::path& mesh
     }      
 
     // create entity with mesh data
-    const aiScene* meshSource = aiImportFile(meshFile.c_str(), aiProcessPreset_TargetRealtime_MaxQuality);
+    Assimp::Importer importer;
+    importer.SetPropertyInteger(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION, 1);
+    const aiScene* meshSource = importer.ReadFile(meshFile.c_str(), aiProcessPreset_TargetRealtime_Fast);
     const auto mesh = Scene::createMesh(name, meshSource, t_mesh_world);
-    aiReleaseImport(meshSource);
+    importer.FreeScene();
 
     const auto frame = Scene::createFrame("frame_" + name);
 
@@ -224,7 +228,7 @@ bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
     auto it = originNode->attributes.find("xyz");
     glm::vec3 p_child_parent(0.0f);
     if (it != originNode->attributes.cend() && it->second.index() == 2)
-        p_child_parent = strToVec3(std::get<std::string>(it->second));
+        p_child_parent = 1000.0f*strToVec3(std::get<std::string>(it->second));
     else
         LOG_WARN << "No xyz specified: " << name;
 
@@ -314,11 +318,12 @@ bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
     }
     else
         LOG_WARN << "No limits specified: " << name;
+    ImGuiLayer::setLimits(m_joints.size(), limits);
 
     // add joint
     LOG_INFO << "adding joint: " << name;
     m_joints.push_back(std::make_shared<JointData>(name, parent, child, t_child_parent, axis, limits));
-    m_jointValues.push_back(0.0f);
+    m_jointValues.push_back((limits.first+limits.second)/2.0f);
 
     return true;
 }
@@ -329,6 +334,8 @@ glm::mat4 Robot::forwardTransform()
     for (size_t i = 0; i < m_joints.size(); ++i) {
         auto& joint = m_joints[i];
 
+        m_jointValues[i] = ImGuiLayer::getSlider(i);
+
         auto& parentLink = joint->parent;
         auto& childLink = joint->child;
         
@@ -338,6 +345,7 @@ glm::mat4 Robot::forwardTransform()
           
         childLink->mesh->setTransformation(t_child_world);
         parentLink->frame->setTransformation(t_child_world);
+        parentLink->frame->scale({800.0f, 800.0f, 800.0f});
     }
 
     return t_child_world;

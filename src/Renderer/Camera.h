@@ -74,8 +74,8 @@ private:
     static glm::mat4 s_camPosPrev;
     static glm::vec3 s_dragPos;
 
-    inline static constexpr float s_scrollFactor = 1.0f;
-    inline static constexpr float s_dragFactor = 0.005f;
+    inline static constexpr float s_scrollFactor = 1000.0f;
+    inline static constexpr float s_dragFactor = 5.0f;
     inline static constexpr float s_rotFactor = 0.2f;
     
 };

@@ -6,12 +6,14 @@
 #include "Events/WindowEvent.h"
 
 #include "Renderer/Texture.h"
+#include "Renderer/FrameBuffer.h"
 
 #include "Robot.h"
 
 class Mesh;
 class Frame;
 class Plane;
+class Sphere;
 
 class Scene
 {
@@ -23,16 +25,19 @@ public:
     static std::shared_ptr<Frame> createFrame(const std::string& name, const glm::mat4& initialTransformation = glm::mat4(1.0f));
     static std::shared_ptr<Plane> createPlane(const std::string& name, const std::shared_ptr<Texture2D>& texture, const glm::mat4& initialTransformation = glm::mat4(1.0f));
     static std::shared_ptr<Plane> createPlane(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation = glm::mat4(1.0f));
+    static std::shared_ptr<Sphere> createSphere(const std::string& name, const glm::vec4& color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), const glm::mat4& initialTransformation = glm::mat4(1.0f));
 
     static void addEntity(const std::string& name, const std::shared_ptr<Entity>& entity);
     static std::shared_ptr<Entity> getEntity(const std::string& name);
     static void deleteEntity(const std::string& name);
 
+    static void render(const Timestep dt);
+
     inline static size_t entityExists(const std::string& name) { return s_entities.find(name) != s_entities.end(); }
     inline static size_t numEntities() { return s_entities.size(); }
     inline static std::unordered_map<std::string, std::shared_ptr<Entity>>& getEntities() { return s_entities; }
 
-    static void render(const Timestep dt);
+    inline static std::shared_ptr<FrameBuffer> getFrameBuffer() { return s_frameBuffer; }
 
     static bool onMouseLeave(MouseLeaveEvent& e);
     static bool onMouseMoved(MouseMovedEvent& e);
@@ -42,6 +47,7 @@ public:
     static bool onWindowResized(WindowResizeEvent& e);
 
 private:
+    static std::shared_ptr<FrameBuffer> s_frameBuffer;
     static std::unordered_map<std::string, std::shared_ptr<Entity>> s_entities;
     static Robot s_robot;
 

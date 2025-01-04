@@ -24,9 +24,11 @@ public:
 
     virtual void draw(const std::optional<Camera>& camera = {}) override;
 
-    const std::vector<MeshData> getData();
+    std::vector<MeshData> getData() const;
 
 private:
+    void addNode(const aiScene* source, const aiNode* node, glm::mat4 t_node_world, const glm::mat4& t_mesh_world);
+
     virtual void createBuffers() override;
 
     std::vector<MeshData> m_meshData;

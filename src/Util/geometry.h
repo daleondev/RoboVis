@@ -130,8 +130,10 @@ static glm::mat3 rotationVecToVec(const glm::vec3& a, const glm::vec3& b)
 
 static std::tuple<glm::vec3, glm::vec3> trianglePlane(const std::array<glm::vec3, 3>& p_tri)
 {  
-    auto N = extendedCross(glm::vec4(p_tri[0], 1.0f), glm::vec4(p_tri[1], 1.0f), glm::vec4(p_tri[2], 1.0f));
-    const glm::vec3 n_plane = glm::normalize(glm::vec3(N/N.w));
+    auto N_plane = extendedCross(glm::vec4(p_tri[0], 1.0f), glm::vec4(p_tri[1], 1.0f), glm::vec4(p_tri[2], 1.0f));
+    if (N_plane.w != 0)
+        N_plane /= N_plane.w;
+    const glm::vec3 n_plane = glm::normalize(N_plane);
     const glm::vec3 p_plane = (p_tri[0]+p_tri[1]+p_tri[2])/3.0f;
     return {n_plane, p_plane};
 }
@@ -199,7 +201,7 @@ static bool pointInTriangle(const glm::vec3& n_plane, const glm::vec3& p_plane, 
     if (glm::any(glm::isnan(n_plane)) || glm::any(glm::isnan(p_plane)))
         return false;
 
-    if (glm::any(glm::epsilonEqual(p_tri[0], p_tri[1], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(p_tri[1], p_tri[2], glm::epsilon<float>())) || glm::any(glm::epsilonEqual(p_tri[2], p_tri[0], glm::epsilon<float>())))
+    if (glm::all(glm::epsilonEqual(p_tri[0], p_tri[1], glm::epsilon<float>())) || glm::all(glm::epsilonEqual(p_tri[1], p_tri[2], glm::epsilon<float>())) || glm::all(glm::epsilonEqual(p_tri[2], p_tri[0], glm::epsilon<float>())))
         return false;
 
     glm::mat3 r(1.0f);

@@ -1,10 +1,15 @@
 #include "pch.h"
 
 #include "ImGuiLayer.h"
+#include "Scene.h"
 
 #include "Window/Window.h"
 
 #include "Util/Log.h"
+#include "Util/geometry.h"
+
+std::array<std::pair<float, float>, 6> ImGuiLayer::s_limits;
+std::array<float, 6> ImGuiLayer::s_sliders;
 
 void ImGuiLayer::init()
 {
@@ -43,7 +48,7 @@ void ImGuiLayer::render(const Timestep dt)
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-    dockSpace();
+    // dockSpace();
     settings(dt);
 
 	ImGuiIO& io = ImGui::GetIO();
@@ -106,8 +111,9 @@ void ImGuiLayer::dockSpace()
 void ImGuiLayer::settings(const Timestep dt)
 {
     ImGui::Begin("Settings");
-	ImGui::Text("Laster render: %.4fms", dt.getMilliSeconds());
-	float j1;
-	ImGui::SliderAngle("Joint 1", &j1);
+	ImGui::Text("Last render: %.4fms", dt.getMilliSeconds());
+	for (size_t i = 0; i < s_sliders.size(); ++i)
+		ImGui::SliderAngle(("Joint " + std::to_string(i+1)).c_str(), &s_sliders[i], rad2deg(s_limits[i].first), rad2deg(s_limits[i].second));
+	// ImGui::Image(Scene::getFrameBuffer()->getColorAttachment(), ImVec2(Window::getWidth(), Window::getHeight()));
 	ImGui::End();
 }

@@ -9,30 +9,31 @@
 #include "Entities/Frame.h"
 #include "Entities/Mesh.h"
 #include "Entities/Plane.h"
+#include "Entities/Sphere.h"
 
 #include "Util/geometry.h"
 
+std::shared_ptr<FrameBuffer> Scene::s_frameBuffer;
 std::unordered_map<std::string, std::shared_ptr<Entity>> Scene::s_entities;
 Robot Scene::s_robot;
 
-static uint32_t vecToRGBA(const glm::vec4& color)
-{
-	const uint8_t r = static_cast<uint8_t>(color.r * 255.0f);
-	const uint8_t g = static_cast<uint8_t>(color.g * 255.0f);
-	const uint8_t b = static_cast<uint8_t>(color.b * 255.0f);
-	const uint8_t a = static_cast<uint8_t>(color.a * 255.0f);
-
-	return (a << 24) | (b << 16) | (g << 8) | r;
-}
-
 void Scene::init()
 {
+    // s_frameBuffer = std::make_shared<FrameBuffer>(Window::getWidth(), Window::getHeight());
+
     const auto r_cam_world = angleAxisF(M_PIf32/2 + M_PIf32/8, glm::vec3(1.0f, 0.0f, 0.0f)) * angleAxisF(-M_PIf32/4, glm::vec3(0.0f, 0.0f, 1.0f));
-    const auto p_cam_world = glm::vec3(2.0f, 2.0f, 2.0f);
+    const auto p_cam_world = glm::vec3(2000.0f, 2000.0f, 2000.0f);
 
     glm::mat4 t_cam_world(1.0f);
     setMat4Rotation(t_cam_world, r_cam_world);
     setMat4Translation(t_cam_world, p_cam_world);
+
+    auto origin = Scene::createFrame("Origin");
+    origin->scale({1000.0f, 1000.0f, 1000.0f});
+
+    auto dragPoint = Scene::createSphere("DragPoint");
+    dragPoint->scale({100.0f, 100.0f, 100.0f});
+    dragPoint->setVisible(false);
 
     constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
     constexpr glm::vec4 dark(0.8f, 0.8f, 0.8f, 1.0f);
@@ -49,9 +50,9 @@ void Scene::init()
         }
     }
     auto texture = TextureLibrary::create("Checkerboard", texData, texWidth, texHeight);
-    createPlane("Plane", texture, glm::scale(glm::mat4(1.0f), {12.0f, 12.0f, 12.0f}));
+    createPlane("Plane", texture, glm::scale(glm::mat4(1.0f), {12000.0f, 12000.0f, 12000.0f}));
 
-    CameraController::init(70.0f, 0.3f, 1000.0f, t_cam_world);
+    CameraController::init(70.0f, 300.0f, 30000.0f, t_cam_world);
     Renderer::init();
 }
 
@@ -108,12 +109,26 @@ std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const glm::ve
     if (ShaderLibrary::exists("Color"))
         shader = ShaderLibrary::get("Color");
     else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Texture", "Color");
+        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
 
     std::shared_ptr<Plane> plane = std::make_shared<Plane>(shader, color);
     plane->setTransformation(initialTransformation);
     addEntity(name, plane);
     return plane;
+}
+
+std::shared_ptr<Sphere> Scene::createSphere(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation)
+{
+    std::shared_ptr<Shader> shader;
+    if (ShaderLibrary::exists("FlatColor"))
+        shader = ShaderLibrary::get("FlatColor");
+    else
+        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/FlatColor", "FlatColor");
+
+    std::shared_ptr<Sphere> sphere = std::make_shared<Sphere>(shader, color);
+    sphere->setTransformation(initialTransformation);
+    addEntity(name, sphere);
+    return sphere;
 }
 
 void Scene::addEntity(const std::string& name, const std::shared_ptr<Entity>& entity) 
@@ -137,6 +152,7 @@ void Scene::deleteEntity(const std::string& name)
 
 void Scene::render(const Timestep dt)
 {   
+    // s_frameBuffer->bind();
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);
 
@@ -158,6 +174,7 @@ void Scene::render(const Timestep dt)
 
         entity->draw(CameraController::getCamera());
     }   
+    // s_frameBuffer->release();
 }
 
 bool Scene::onMouseLeave(MouseLeaveEvent& e)
@@ -192,8 +209,8 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
         }
     }
 
-    if (CameraController::isDragging() && entityExists("DragFrame")) {
-        auto marker = getEntity("DragFrame");
+    if (CameraController::isDragging() && entityExists("DragPoint")) {
+        auto marker = getEntity("DragPoint");
         marker->setTranslation(CameraController::getDraggingPosition());
         marker->setVisible(true);
     }
@@ -212,8 +229,8 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
             CameraController::stopDraggingRot();
-            if (entityExists("DragFrame"))
-                getEntity("DragFrame")->setVisible(false);
+            if (entityExists("DragPoint"))
+                getEntity("DragPoint")->setVisible(false);
             break;
         }
     }

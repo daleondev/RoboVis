@@ -23,10 +23,10 @@ Application::Application()
 
     LOG_INIT();
 
-    Window::create("Application", 800, 600);
+    Window::create("Application", 1280, 720);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
     Scene::init();
-    // ImGuiLayer::init();
+    ImGuiLayer::init();
 
     signal(SIGTERM, Application::handleSignal);
     signal(SIGINT, Application::handleSignal);
@@ -34,7 +34,7 @@ Application::Application()
 
 Application::~Application()
 {
-    // ImGuiLayer::shutdown();
+    ImGuiLayer::shutdown();
     Window::shutdown();
 
     LOG_SHUTDOWN();
@@ -48,13 +48,6 @@ int Application::run(int argc, char **argv)
 		LOG_FATAL << "No robot model path specified.";
 		return 1;
 	}
-
-    std::shared_ptr<Entity> origin = Scene::createFrame("Origin");
-    origin->scale({0.75f, 0.75f, 0.75f});
-
-    // todo: change entity type
-    std::shared_ptr<Entity> dragFrame = Scene::createFrame("DragFrame");
-    dragFrame->setVisible(false);
 
     if (!Scene::createRobot(argv[1])) {
         LOG_FATAL << "Failed to create the robot.";
@@ -83,7 +76,7 @@ void Application::update(const Timestep dt)
     Window::update();
 
     Scene::render(dt);
-    // ImGuiLayer::render(dt);
+    ImGuiLayer::render(dt);
 }
 
 void Application::onEvent(Event& e)

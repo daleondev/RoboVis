@@ -30,6 +30,23 @@ void Plane::draw(const std::optional<Camera>& camera)
     Renderer::draw(m_shader, m_vertexArray);
 }
 
+PlaneData Plane::getData() const
+{
+    std::array<glm::vec3, 4> vertices {
+        m_model * glm::vec4{-0.5f, -0.5f, 0.0f, 1.0f},
+        m_model * glm::vec4{ 0.5f, -0.5f, 0.0f, 1.0f},
+        m_model * glm::vec4{ 0.5f,  0.5f, 0.0f, 1.0f},
+        m_model * glm::vec4{-0.5f,  0.5f, 0.0f, 1.0f}
+    };
+
+    constexpr std::array<std::array<uint16_t, 3>, 2> indices = {
+        std::array<uint16_t, 3>{0, 1, 2}, 
+        std::array<uint16_t, 3>{2, 3, 0}
+    };
+
+    return PlaneData{vertices, indices};
+}
+
 void Plane::createBuffers()
 {
     std::shared_ptr<VertexBuffer> vertexBuffer = std::make_shared<VertexBuffer>();
