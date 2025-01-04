@@ -7,10 +7,13 @@
 class Sphere : public Entity {
 
 public:
-    Sphere(const std::shared_ptr<Shader>& shader, const glm::vec4& color);
+    Sphere(const glm::vec4& color);
     virtual ~Sphere();
 
-    virtual void draw(const std::optional<Camera>& camera = {}) override;
+    virtual void draw(const Camera& camera) override;
+    virtual void updateTriangulationData() override { }
+
+    inline virtual bool rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, glm::vec3& p_hit_world, float& minDist) const override { return false; }
 
 private:   
     virtual void createBuffers() override;

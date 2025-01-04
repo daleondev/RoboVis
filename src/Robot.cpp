@@ -82,12 +82,6 @@ bool Robot::setup(const std::string& sourceDir)
         }
     }
 
-    // for (auto j : m_joints) {
-    //     printMat(j.second->parentToChild);
-    //     printVec(j.second->rotationAxis);
-    //     LOG_TRACE << "----------------------";
-    // }
-
     return true;
 }
 
@@ -318,12 +312,12 @@ bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
     }
     else
         LOG_WARN << "No limits specified: " << name;
-    ImGuiLayer::setLimits(m_joints.size(), limits);
 
     // add joint
     LOG_INFO << "adding joint: " << name;
     m_joints.push_back(std::make_shared<JointData>(name, parent, child, t_child_parent, axis, limits));
-    m_jointValues.push_back((limits.first+limits.second)/2.0f);
+    m_jointValues.push_back((limits.first+limits.second)/2.0f); 
+    ImGuiLayer::addSlider(m_jointValues.back(), limits);
 
     return true;
 }
@@ -334,7 +328,7 @@ glm::mat4 Robot::forwardTransform()
     for (size_t i = 0; i < m_joints.size(); ++i) {
         auto& joint = m_joints[i];
 
-        m_jointValues[i] = ImGuiLayer::getSlider(i);
+        m_jointValues[i] = ImGuiLayer::getSliderValue(i);
 
         auto& parentLink = joint->parent;
         auto& childLink = joint->child;
@@ -345,7 +339,7 @@ glm::mat4 Robot::forwardTransform()
           
         childLink->mesh->setTransformation(t_child_world);
         parentLink->frame->setTransformation(t_child_world);
-        parentLink->frame->scale({800.0f, 800.0f, 800.0f});
+        parentLink->frame->scale({400.0f, 400.0f, 400.0f});
     }
 
     return t_child_world;

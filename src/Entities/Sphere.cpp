@@ -7,9 +7,14 @@
 #include "Util/Log.h"
 #include "Util/geometry.h"
 
-Sphere::Sphere(const std::shared_ptr<Shader>& shader, const glm::vec4& color)
-    : Entity(shader), m_color(color)
+Sphere::Sphere(const glm::vec4& color)
+    : m_color(color)
 {
+    if (ShaderLibrary::exists("FlatColor"))
+        m_shader = ShaderLibrary::get("FlatColor");
+    else
+        m_shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/FlatColor", "FlatColor");
+
     createBuffers();
 }
 
@@ -18,15 +23,12 @@ Sphere::~Sphere()
     m_vertexArray.release();
 }
 
-void Sphere::draw(const std::optional<Camera>& camera)
+void Sphere::draw(const Camera& camera)
 {
     if (!m_visible)
         return;
 
-    if (camera)
-        updateMvp(camera);
-    else
-        m_shader->bind();
+    updateMvp(camera);
 
     m_shader->uploadVec4("u_color", m_color);
     Renderer::draw(m_shader, m_vertexArray);

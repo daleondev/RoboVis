@@ -4,9 +4,13 @@
 
 #include "Renderer/Renderer.h"
 
-Frame::Frame(const std::shared_ptr<Shader>& shader)
-    : Entity(shader)
+Frame::Frame()
 {
+    if (ShaderLibrary::exists("Color"))
+        m_shader = ShaderLibrary::get("Color");
+    else
+        m_shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
+
     createBuffers();
 }
 
@@ -15,13 +19,12 @@ Frame::~Frame()
     m_vertexArray.release();
 }
 
-void Frame::draw(const std::optional<Camera>& camera)
+void Frame::draw(const Camera& camera)
 {
     if (!m_visible)
         return;
 
-    if (camera)
-        updateMvp(camera);
+    updateMvp(camera);
         
     Renderer::draw(m_shader, m_vertexArray);
 }

@@ -8,8 +8,8 @@
 #include "Util/Log.h"
 #include "Util/geometry.h"
 
-std::array<std::pair<float, float>, 6> ImGuiLayer::s_limits;
-std::array<float, 6> ImGuiLayer::s_sliders;
+std::vector<std::tuple<float, float, float>> ImGuiLayer::s_sliders;
+bool ImGuiLayer::s_bbActive;
 
 void ImGuiLayer::init()
 {
@@ -112,8 +112,11 @@ void ImGuiLayer::settings(const Timestep dt)
 {
     ImGui::Begin("Settings");
 	ImGui::Text("Last render: %.4fms", dt.getMilliSeconds());
-	for (size_t i = 0; i < s_sliders.size(); ++i)
-		ImGui::SliderAngle(("Joint " + std::to_string(i+1)).c_str(), &s_sliders[i], rad2deg(s_limits[i].first), rad2deg(s_limits[i].second));
+	for (size_t i = 0; i < s_sliders.size(); ++i) {
+		auto&[val, min, max] = s_sliders[i];
+		ImGui::SliderAngle(("Joint " + std::to_string(i+1)).c_str(), &val, rad2deg(min), rad2deg(max));
+	}
+	ImGui::Checkbox("Bounding Boxes", &s_bbActive);
 	// ImGui::Image(Scene::getFrameBuffer()->getColorAttachment(), ImVec2(Window::getWidth(), Window::getHeight()));
 	ImGui::End();
 }

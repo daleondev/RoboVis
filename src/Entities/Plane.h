@@ -6,21 +6,14 @@
 
 class Texture2D;
 
-struct PlaneData
-{
-    std::array<glm::vec3, 4> vertices;
-    std::array<std::array<uint16_t, 3>, 2> indices;
-};
-
 class Plane : public Entity {
 
 public:
-    Plane(const std::shared_ptr<Shader>& shader, const std::variant<std::shared_ptr<Texture2D>, glm::vec4>& material);
+    Plane(const std::variant<std::shared_ptr<Texture2D>, glm::vec4>& material);
     virtual ~Plane();
 
-    virtual void draw(const std::optional<Camera>& camera = {}) override;
-
-    PlaneData getData() const;
+    virtual void draw(const Camera& camera) override;
+    virtual void updateTriangulationData() override;
 
 private:   
     virtual void createBuffers() override;
@@ -29,5 +22,17 @@ private:
 
     std::variant<std::shared_ptr<Texture2D>, glm::vec4> m_material;
     VertexArray m_vertexArray;
+
+    inline static constexpr std::array<glm::vec3, 4> s_vertices {
+        glm::vec3{-0.5f, -0.5f, 0.0f},
+        glm::vec3{ 0.5f, -0.5f, 0.0f},
+        glm::vec3{ 0.5f,  0.5f, 0.0f},
+        glm::vec3{-0.5f,  0.5f, 0.0f}
+    };
+
+    inline static constexpr std::array<std::array<uint16_t, 3>, 2> s_indices = {
+        std::array<uint16_t, 3>{0, 1, 2}, 
+        std::array<uint16_t, 3>{2, 3, 0}
+    };
 
 };

@@ -39,6 +39,7 @@
 #include <string>
 #include <thread>
 #include <ranges>
+#include <numeric>
 #include <variant>
 #include <cassert>
 #include <cstdint>

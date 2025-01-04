@@ -10,7 +10,8 @@
                                         mat[row+1][col+0], mat[row+1][col+1], mat[row+1][col+2],\
                                         mat[row+2][col+0], mat[row+2][col+1], mat[row+2][col+2])
 
-static void printMat(const glm::mat4& mat)
+template<typename T>
+static void printMat4(const T& mat)
 {
     std::stringstream ss;
     ss << '\n';
@@ -20,7 +21,8 @@ static void printMat(const glm::mat4& mat)
     LOG_TRACE << ss.str();
 }
 
-static void printMat(const glm::mat3& mat)
+template<typename T>
+static void printMat3(const T& mat)
 {
     std::stringstream ss;
     ss << '\n';
@@ -30,14 +32,54 @@ static void printMat(const glm::mat3& mat)
     LOG_TRACE << ss.str();
 }
 
-static void printVec(const glm::vec4& vec)
+template<typename T>
+static void printVec4(const T& vec)
 {
     LOG_TRACE << strPrintf("%5.5f %-5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2], vec[3]);
 }
 
-static void printVec(const glm::vec3& vec)
+template<typename T>
+static void printVec3(const T& vec)
 {
     LOG_TRACE << strPrintf("%5.5f %-5.5f %-5.5f\n", vec[0], vec[1], vec[2]);
+}
+
+template<typename TS, typename TD>
+static TD convertVec3(const TS& src)
+{
+    TD dest;
+    for (int i = 0; i < 3; ++i)
+        dest[i] = src[i];
+    return dest;
+}
+
+template<typename TS, typename TD>
+static TD convertVec4(const TS& src)
+{
+    TD dest;
+    for (int i = 0; i < 4; ++i)
+        dest[i] = src[i];
+    return dest;
+}
+
+template<typename TS, typename TD>
+static TD convertMat3(const TS& src)
+{
+    TD dest;
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            dest[i][j] = src[i][j];
+    return dest;
+}
+
+template<typename TS, typename TD>
+static TD convertMat4(const TS& src)
+{
+    TD dest;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            dest[i][j] = src[i][j];
+    return dest;
 }
 
 static float deg2rad(const float deg) 
@@ -138,18 +180,18 @@ static std::tuple<glm::vec3, glm::vec3> trianglePlane(const std::array<glm::vec3
     return {n_plane, p_plane};
 }
 
-static std::optional<glm::vec3> intersectionLinePlane(const glm::vec3& n_plane, const glm::vec3& p_plane, const glm::vec3& v_line, const glm::vec3& p_line)
+static bool intersectionLinePlane(const glm::vec3& n_plane, const glm::vec3& p_plane, const glm::vec3& v_line, const glm::vec3& p_line, glm::vec3& p_intersect)
 {
     // https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
     const float numerator = glm::dot(p_plane-p_line, n_plane);
     if (numerator == 0)
-        return {};
+        return false;
 
     const float denominator = glm::dot(v_line, n_plane);
     const float d = numerator/denominator;
-    const glm::vec3 p = p_line+v_line*d;
+    p_intersect = p_line+v_line*d;
 
-    return p;
+    return true;
 }
 
 static int16_t location(const glm::vec3& N, const glm::vec3& P)
@@ -201,7 +243,7 @@ static bool pointInTriangle(const glm::vec3& n_plane, const glm::vec3& p_plane, 
     if (glm::any(glm::isnan(n_plane)) || glm::any(glm::isnan(p_plane)))
         return false;
 
-    if (glm::all(glm::epsilonEqual(p_tri[0], p_tri[1], glm::epsilon<float>())) || glm::all(glm::epsilonEqual(p_tri[1], p_tri[2], glm::epsilon<float>())) || glm::all(glm::epsilonEqual(p_tri[2], p_tri[0], glm::epsilon<float>())))
+    if (glm::all(glm::epsilonEqual(p_tri[0], p_tri[1], 0.001f)) || glm::all(glm::epsilonEqual(p_tri[1], p_tri[2], 0.001f)) || glm::all(glm::epsilonEqual(p_tri[2], p_tri[0], 0.001f)))
         return false;
 
     glm::mat3 r(1.0f);

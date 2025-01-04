@@ -25,9 +25,9 @@ Application::Application()
 
     Window::create("Application", 1280, 720);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
-    Scene::init();
     ImGuiLayer::init();
-
+    Scene::init();
+    
     signal(SIGTERM, Application::handleSignal);
     signal(SIGINT, Application::handleSignal);
 }

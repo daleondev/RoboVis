@@ -28,11 +28,11 @@ void Scene::init()
     setMat4Rotation(t_cam_world, r_cam_world);
     setMat4Translation(t_cam_world, p_cam_world);
 
-    auto origin = Scene::createFrame("Origin");
-    origin->scale({1000.0f, 1000.0f, 1000.0f});
+    // auto origin = Scene::createFrame("Origin");
+    // origin->scale({1000.0f, 1000.0f, 1000.0f});
 
     auto dragPoint = Scene::createSphere("DragPoint");
-    dragPoint->scale({100.0f, 100.0f, 100.0f});
+    dragPoint->scale({60.0f, 60.0f, 60.0f});
     dragPoint->setVisible(false);
 
     constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
@@ -63,13 +63,7 @@ bool Scene::createRobot(const std::string& sourceDir)
 
 std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world, const glm::mat4& initialTransformation)
 {
-    std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("Color"))
-        shader = ShaderLibrary::get("Color");
-    else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
-
-    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(shader, source, t_mesh_world);
+    std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(source, t_mesh_world);
     mesh->setTransformation(initialTransformation);
     addEntity(name, mesh);
     return mesh;
@@ -77,13 +71,7 @@ std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* 
 
 std::shared_ptr<Frame> Scene::createFrame(const std::string& name, const glm::mat4& initialTransformation)
 {
-    std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("Color"))
-        shader = ShaderLibrary::get("Color");
-    else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
-
-    std::shared_ptr<Frame> frame = std::make_shared<Frame>(shader);
+    std::shared_ptr<Frame> frame = std::make_shared<Frame>();
     frame->setTransformation(initialTransformation);
     addEntity(name, frame);
     return frame;
@@ -91,13 +79,7 @@ std::shared_ptr<Frame> Scene::createFrame(const std::string& name, const glm::ma
 
 std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const std::shared_ptr<Texture2D>& texture, const glm::mat4& initialTransformation)
 {
-    std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("Texture"))
-        shader = ShaderLibrary::get("Texture");
-    else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Texture", "Texture");
-
-    std::shared_ptr<Plane> plane = std::make_shared<Plane>(shader, texture);
+    std::shared_ptr<Plane> plane = std::make_shared<Plane>(texture);
     plane->setTransformation(initialTransformation);
     addEntity(name, plane);
     return plane;
@@ -105,13 +87,7 @@ std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const std::sh
 
 std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation)
 {
-    std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("Color"))
-        shader = ShaderLibrary::get("Color");
-    else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Color", "Color");
-
-    std::shared_ptr<Plane> plane = std::make_shared<Plane>(shader, color);
+    std::shared_ptr<Plane> plane = std::make_shared<Plane>(color);
     plane->setTransformation(initialTransformation);
     addEntity(name, plane);
     return plane;
@@ -119,13 +95,7 @@ std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const glm::ve
 
 std::shared_ptr<Sphere> Scene::createSphere(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation)
 {
-    std::shared_ptr<Shader> shader;
-    if (ShaderLibrary::exists("FlatColor"))
-        shader = ShaderLibrary::get("FlatColor");
-    else
-        shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/FlatColor", "FlatColor");
-
-    std::shared_ptr<Sphere> sphere = std::make_shared<Sphere>(shader, color);
+    std::shared_ptr<Sphere> sphere = std::make_shared<Sphere>(color);
     sphere->setTransformation(initialTransformation);
     addEntity(name, sphere);
     return sphere;

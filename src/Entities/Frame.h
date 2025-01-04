@@ -7,10 +7,13 @@
 class Frame : public Entity {
 
 public:
-    Frame(const std::shared_ptr<Shader>& shader);
+    Frame();
     virtual ~Frame();
 
-    virtual void draw(const std::optional<Camera>& camera = {}) override;
+    virtual void draw(const Camera& camera) override;
+    virtual void updateTriangulationData() override { }
+
+    inline virtual bool rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, glm::vec3& p_hit_world, float& minDist) const override { return false; }
 
 private:
     virtual void createBuffers() override;

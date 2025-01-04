@@ -10,14 +10,13 @@ public:
 
     static void render(const Timestep dt);
 
-    inline static const void setLimits(const std::array<std::pair<float, float>, 6>& limits) { s_limits = limits; }
-    inline static const void setLimits(const size_t idx, std::pair<float, float>& limits) { s_limits[idx] = limits; }
-    inline static std::array<float, 6>& getSliders() { return s_sliders; }
-    inline static float& getSlider(const size_t idx) { return s_sliders[idx]; }
+    inline static void addSlider(const float value, std::pair<float, float>& limits) { s_sliders.push_back({value, limits.first, limits.second}); }
+    inline static float getSliderValue(const size_t idx) { return std::get<0>(s_sliders[idx]); }
+    inline static bool getBoundingBoxesActive() { return s_bbActive; }
 
 private:
-    static std::array<std::pair<float, float>, 6> s_limits;
-    static std::array<float, 6> s_sliders;
+    static std::vector<std::tuple<float, float, float>> s_sliders;
+    static bool s_bbActive;
 
     static void dockSpace();
     static void settings(const Timestep dt);
