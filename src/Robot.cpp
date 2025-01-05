@@ -340,6 +340,7 @@ glm::mat4 Robot::forwardTransform()
         childLink->mesh->setTransformation(t_child_world);
         parentLink->frame->setTransformation(t_child_world);
         parentLink->frame->scale({400.0f, 400.0f, 400.0f});
+        parentLink->frame->setVisible(ImGuiLayer::getFramesActive());
     }
 
     return t_child_world;

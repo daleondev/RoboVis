@@ -45,6 +45,15 @@ static void printVec3(const T& vec)
 }
 
 template<typename TS, typename TD>
+static TD convertVec2(const TS& src)
+{
+    TD dest;
+    for (int i = 0; i < 2; ++i)
+        dest[i] = src[i];
+    return dest;
+}
+
+template<typename TS, typename TD>
 static TD convertVec3(const TS& src)
 {
     TD dest;

@@ -6,6 +6,8 @@
 
 #include "Renderer/Renderer.h"
 
+#include "ImGui/ImGuiLayer.h"
+
 #include "Entities/Frame.h"
 #include "Entities/Mesh.h"
 #include "Entities/Plane.h"
@@ -19,7 +21,12 @@ Robot Scene::s_robot;
 
 void Scene::init()
 {
-    // s_frameBuffer = std::make_shared<FrameBuffer>(Window::getWidth(), Window::getHeight());
+    auto [width, height] = ImGuiLayer::getViewportSize();
+    if (width <= 0 || height <= 0) {
+        width = Window::getWidth();
+        height = Window::getHeight();
+    }
+    s_frameBuffer = std::make_shared<FrameBuffer>(width, height);
 
     const auto r_cam_world = angleAxisF(M_PIf32/2 + M_PIf32/8, glm::vec3(1.0f, 0.0f, 0.0f)) * angleAxisF(-M_PIf32/4, glm::vec3(0.0f, 0.0f, 1.0f));
     const auto p_cam_world = glm::vec3(2000.0f, 2000.0f, 2000.0f);
@@ -122,7 +129,7 @@ void Scene::deleteEntity(const std::string& name)
 
 void Scene::render(const Timestep dt)
 {   
-    // s_frameBuffer->bind();
+    s_frameBuffer->bind();
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);
 
@@ -144,7 +151,7 @@ void Scene::render(const Timestep dt)
 
         entity->draw(CameraController::getCamera());
     }   
-    // s_frameBuffer->release();
+    s_frameBuffer->release();
 }
 
 bool Scene::onMouseLeave(MouseLeaveEvent& e)

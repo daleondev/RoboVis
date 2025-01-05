@@ -18,6 +18,7 @@ private:
     uint16_t m_height;
 
     GLuint m_colorAttachment;
+    GLuint m_depthAttachment;
     GLuint m_buffer;
 
 };

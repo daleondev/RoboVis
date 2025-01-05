@@ -3,11 +3,12 @@
 #include "Camera.h"
 #include "Scene.h"
 
-#include "Window/Window.h"
 #include "Window/Input.h"
 
 #include "Entities/Mesh.h"
 #include "Entities/Plane.h"
+
+#include "ImGui/ImGuiLayer.h"
 
 #include "Util/geometry.h"
 
@@ -266,15 +267,23 @@ std::tuple<glm::vec3, glm::vec3> CameraController::screenToCam(const glm::vec2& 
     const float leftFar = -rightFar;
     const float bottomFar = -topFar;
 
-    glm::vec3 p_near_cam;
-    p_near_cam.x = -map(p_mouse_screen.x, 0, Window::getWidth(), leftNear, rightNear);
-    p_near_cam.y = map(p_mouse_screen.y, 0, Window::getHeight(), topNear, bottomNear);
-    p_near_cam.z = s_zNear;
+    auto [width, height] = ImGuiLayer::getViewportSize();
+    if (width <= 0 || height <= 0) {
+        width = Window::getWidth();
+        height = Window::getHeight();
+    }
 
-    glm::vec3 p_far_cam;
-    p_far_cam.x = -map(p_mouse_screen.x, 0, Window::getWidth(), leftFar, rightFar);
-    p_far_cam.y = map(p_mouse_screen.y, 0, Window::getHeight(), topFar, bottomFar);
-    p_far_cam.z = s_zFar;
+    glm::vec3 p_near_cam(
+        -map(p_mouse_screen.x, 0, width, leftNear, rightNear),
+        map(p_mouse_screen.y, 0, height, topNear, bottomNear),
+        s_zNear
+    );
+
+    glm::vec3 p_far_cam(
+        -map(p_mouse_screen.x, 0, width, leftFar, rightFar),
+        map(p_mouse_screen.y, 0, height, topFar, bottomFar),
+        s_zFar
+    );
 
     return {p_near_cam, p_far_cam};
 }
@@ -315,6 +324,12 @@ void CameraController::updateProjection()
 {
     assert(Window::isInitialized() && "Window not initialized");
 
-    float aspect = static_cast<float>(Window::getWidth()) / static_cast<float>(Window::getHeight());
+    auto [width, height] = ImGuiLayer::getViewportSize();
+    if (width <= 0 || height <= 0) {
+        width = Window::getWidth();
+        height = Window::getHeight();
+    }
+    float aspect = static_cast<float>(width) / static_cast<float>(height);
+    glViewport(0, 0, width, height);
     s_camera.setProjection(glm::perspective(s_hFov, aspect, s_zNear, s_zFar));
 }
