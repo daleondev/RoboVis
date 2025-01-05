@@ -16,7 +16,7 @@ public:
     inline virtual bool rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, glm::vec3& p_hit_world, float& minDist) const override { return false; }
 
 private:   
-    virtual void createBuffers() override;
+    void createBuffers();
 
     glm::vec4 m_color;
     VertexArray m_vertexArray;

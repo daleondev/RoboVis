@@ -8,19 +8,18 @@
 #include "Renderer/Texture.h"
 #include "Renderer/FrameBuffer.h"
 
-#include "Robot.h"
-
 class Mesh;
 class Frame;
 class Plane;
 class Sphere;
+class Robot;
 
 class Scene
 {
 public:
     static void init();
 
-    static bool createRobot(const std::string& sourceDir);
+    static std::shared_ptr<Robot> createRobot(const std::string& name, const std::string& sourceDir, const glm::mat4& initialTransformation = glm::mat4(1.0f));
     static std::shared_ptr<Mesh> createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world = glm::mat4(1.0f), const glm::mat4& initialTransformation = glm::mat4(1.0f));
     static std::shared_ptr<Frame> createFrame(const std::string& name, const glm::mat4& initialTransformation = glm::mat4(1.0f));
     static std::shared_ptr<Plane> createPlane(const std::string& name, const std::shared_ptr<Texture2D>& texture, const glm::mat4& initialTransformation = glm::mat4(1.0f));
@@ -44,11 +43,11 @@ public:
     static bool onMouseButtonPressed(MouseButtonPressedEvent& e);
     static bool onMouseButtonReleased(MouseButtonReleasedEvent& e);
     static bool onMouseScrolled(MouseScrolledEvent& e);
+    static bool onMouseDropped(MouseDroppedEvent& e);
     static bool onWindowResized(WindowResizeEvent& e);
 
 private:
     static std::shared_ptr<FrameBuffer> s_frameBuffer;
     static std::unordered_map<std::string, std::shared_ptr<Entity>> s_entities;
-    static Robot s_robot;
 
 };

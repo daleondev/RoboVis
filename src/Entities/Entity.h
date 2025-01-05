@@ -41,8 +41,6 @@ public:
     inline void setVisible(const bool visible) { m_visible = visible; }
 
 protected:    
-    virtual void createBuffers() = 0;
-
     void updateMvp(const Camera& camera);
 
     glm::mat4 m_model;

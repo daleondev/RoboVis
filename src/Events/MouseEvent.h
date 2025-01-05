@@ -118,3 +118,34 @@ public:
 	EVENT_CLASS_TYPE(MouseButtonReleased)
 
 };
+
+class MouseDroppedEvent : public Event
+{
+public:
+	MouseDroppedEvent(const std::vector<std::string>& paths) : m_paths(paths) {}
+
+	inline std::vector<std::string> getPaths() const { return m_paths; }
+	inline size_t getNumPaths() const { return m_paths.size(); }
+	inline std::string getPath(const size_t idx) const { return m_paths[idx]; }
+
+	inline std::vector<std::string>::const_iterator cbegin() const { return m_paths.cbegin(); }
+	inline std::vector<std::string>::const_iterator cend() const { return m_paths.cend(); }
+	inline std::vector<std::string>::iterator begin() { return m_paths.begin(); }
+	inline std::vector<std::string>::iterator end() { return m_paths.end(); }
+
+	std::string toString() const override
+	{
+		std::stringstream ss;
+		ss << "MouseDropEvent";
+		for (size_t i = 0; i < m_paths.size(); ++i)
+			ss << "\nPath_" << i << ": " << m_paths[i];
+		return ss.str();
+	}
+
+	EVENT_CLASS_TYPE(MouseDropped)
+	EVENT_CLASS_CATEGORY(static_cast<uint8_t>(EventCategory::Mouse))
+
+private:
+	std::vector<std::string> m_paths;
+
+};

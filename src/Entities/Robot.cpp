@@ -1,7 +1,9 @@
 #include "pch.h"
 
 #include "Robot.h"
-#include "Scene.h"
+
+#include "Mesh.h"
+#include "Frame.h"
 
 #include "ImGui/ImGuiLayer.h"
 
@@ -82,12 +84,49 @@ bool Robot::setup(const std::string& sourceDir)
         }
     }
 
+    m_controlData.drawFrames = true;
+    m_controlData.drawBoundingBoxes = false;
     return true;
 }
 
 void Robot::update(const Timestep dt)
 {
     forwardTransform();
+}
+
+void Robot::draw(const Camera& camera)
+{
+    for (auto&[name, entity] : m_entities)
+        if (auto mesh = dynamic_cast<Mesh*>(entity.get()); mesh != nullptr)
+            mesh->draw(camera, m_controlData.drawBoundingBoxes);
+        else
+            entity->draw(camera);
+}
+
+void Robot::updateTriangulationData()
+{
+    for (auto&[name, entity] : m_entities)
+        if (auto mesh = dynamic_cast<Mesh*>(entity.get()); mesh != nullptr)
+            mesh->updateTriangulationData();
+}
+
+bool Robot::rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, glm::vec3& p_hit_world, float& minDist) const
+{
+    bool hit = false;
+    glm::vec3 p_hitTmp_world;
+    for (auto&[name, entity] : m_entities) {       
+        float dist;
+
+        if (entity->rayIntersection(ray_world, p_hitTmp_world, dist)) {
+            if (!hit || dist < minDist) {
+                hit = true;
+                minDist = dist;
+                p_hit_world = p_hitTmp_world;
+            }
+        }
+    }
+
+    return hit;
 }
 
 bool Robot::setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode)
@@ -182,10 +221,13 @@ bool Robot::setupLink(const std::string& name, const std::filesystem::path& mesh
     Assimp::Importer importer;
     importer.SetPropertyInteger(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION, 1);
     const aiScene* meshSource = importer.ReadFile(meshFile.c_str(), aiProcessPreset_TargetRealtime_Fast);
-    const auto mesh = Scene::createMesh(name, meshSource, t_mesh_world);
+    const auto mesh = std::make_shared<Mesh>(meshSource, t_mesh_world);
+    addEntity(name, mesh);
     importer.FreeScene();
 
-    const auto frame = Scene::createFrame("frame_" + name);
+    // create Frame
+    const auto frame = std::make_shared<Frame>();
+    addEntity("frame_" + name, frame);
 
     // add link
     LOG_INFO << "adding link: " << name;
@@ -316,10 +358,15 @@ bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
     // add joint
     LOG_INFO << "adding joint: " << name;
     m_joints.push_back(std::make_shared<JointData>(name, parent, child, t_child_parent, axis, limits));
-    m_jointValues.push_back((limits.first+limits.second)/2.0f); 
-    ImGuiLayer::addSlider(m_jointValues.back(), limits);
+    m_controlData.jointValues.push_back((limits.first+limits.second)/2.0f);
 
     return true;
+}
+
+void Robot::addEntity(const std::string& name, const std::shared_ptr<Entity>& entity) 
+{ 
+    assert(m_entities.find(name) == m_entities.end() && "Entity already exists");
+    m_entities.emplace(name, entity); 
 }
 
 glm::mat4 Robot::forwardTransform()
@@ -328,19 +375,20 @@ glm::mat4 Robot::forwardTransform()
     for (size_t i = 0; i < m_joints.size(); ++i) {
         auto& joint = m_joints[i];
 
-        m_jointValues[i] = ImGuiLayer::getSliderValue(i);
-
         auto& parentLink = joint->parent;
         auto& childLink = joint->child;
         
+        if (i == 0)
+            parentLink->mesh->setTransformation(m_model);
+
         const auto t_parent_world = parentLink->mesh->getModel();
         t_child_world = joint->parentToChild * t_parent_world;
-        t_child_world = glm::mat4(angleAxisF(m_jointValues[i], joint->rotationAxis)) * t_child_world;
+        t_child_world = glm::mat4(angleAxisF(m_controlData.jointValues[i], joint->rotationAxis)) * t_child_world;
           
         childLink->mesh->setTransformation(t_child_world);
         parentLink->frame->setTransformation(t_child_world);
         parentLink->frame->scale({400.0f, 400.0f, 400.0f});
-        parentLink->frame->setVisible(ImGuiLayer::getFramesActive());
+        parentLink->frame->setVisible(m_controlData.drawFrames);
     }
 
     return t_child_world;

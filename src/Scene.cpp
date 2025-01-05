@@ -12,12 +12,12 @@
 #include "Entities/Mesh.h"
 #include "Entities/Plane.h"
 #include "Entities/Sphere.h"
+#include "Entities/Robot.h"
 
 #include "Util/geometry.h"
 
 std::shared_ptr<FrameBuffer> Scene::s_frameBuffer;
 std::unordered_map<std::string, std::shared_ptr<Entity>> Scene::s_entities;
-Robot Scene::s_robot;
 
 void Scene::init()
 {
@@ -63,9 +63,15 @@ void Scene::init()
     Renderer::init();
 }
 
-bool Scene::createRobot(const std::string& sourceDir)
+std::shared_ptr<Robot> Scene::createRobot(const std::string& name, const std::string& sourceDir, const glm::mat4& initialTransformation)
 {
-    return s_robot.setup(sourceDir);
+    std::shared_ptr<Robot> robot = std::make_shared<Robot>();
+    if (!robot->setup(sourceDir))
+        return nullptr;
+
+    robot->setTransformation(initialTransformation);
+    addEntity(name, robot);
+    return robot;
 }
 
 std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world, const glm::mat4& initialTransformation)
@@ -133,10 +139,7 @@ void Scene::render(const Timestep dt)
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);
 
-    s_robot.update(dt);
-
     for (const auto&[name, entity] : s_entities) {
-
         if (ImGuiLayer::isViewportFocused()) {
             if (Input::isKeyPressed(GLFW_KEY_LEFT))
                 entity->rotate(-500*dt, {0.0f, 1.0f, 0.0f});
@@ -150,6 +153,9 @@ void Scene::render(const Timestep dt)
             else if(Input::isKeyPressed(GLFW_KEY_DOWN))
                 entity->rotate(500*dt, {1.0f, 0.0f, 0.0f});
         }
+
+        if (auto robot = dynamic_cast<Robot*>(entity.get()); robot != nullptr)
+            robot->update(dt);
 
         entity->draw(CameraController::getCamera());
     }   
@@ -222,6 +228,18 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
 bool Scene::onMouseScrolled(MouseScrolledEvent& e)
 {
     CameraController::zoom(e.getYOffset());
+
+    return true;
+}
+
+bool Scene::onMouseDropped(MouseDroppedEvent& e)
+{
+    if (e.getNumPaths() == 1) {
+        std::filesystem::path path = e.getPath(0);
+        if (std::filesystem::is_directory(path)) {
+            createRobot("test", path.string());
+        }
+    }
 
     return true;
 }

@@ -5,12 +5,11 @@
 
 #include "Window/Window.h"
 
+#include "Entities/Robot.h"
+
 #include "Util/Log.h"
 #include "Util/geometry.h"
 
-std::vector<std::tuple<float, float, float>> ImGuiLayer::s_sliders;
-bool ImGuiLayer::s_bbActive;
-bool ImGuiLayer::s_framesActive = true;
 std::pair<uint16_t, uint16_t> ImGuiLayer::s_viewportSize;
 glm::vec2 ImGuiLayer::s_viewportPos;
 bool ImGuiLayer::s_viewportHovered;
@@ -59,8 +58,8 @@ void ImGuiLayer::render(const Timestep dt)
 	ImGui::NewFrame();
 
     dockSpace([](const ImGuiID dockspaceId) {
-		settings(dockspaceId);
 		viewport(dockspaceId);
+		robotControls(dockspaceId);
 	});
 
 	ImGuiIO& io = ImGui::GetIO();
@@ -119,24 +118,6 @@ void ImGuiLayer::dockSpace(const std::function<void(const ImGuiID)>& dockspaceCo
 	ImGui::End();
 }
 
-void ImGuiLayer::settings(const ImGuiID dockspaceId)
-{
-	// ImGui::SetNextWindowDockID(dockspaceId);
-
-    ImGui::Begin("Settings");
-
-	ImGui::Text("Joint values:", "");
-	for (size_t i = 0; i < s_sliders.size(); ++i) {
-		auto&[val, min, max] = s_sliders[i];
-		ImGui::SliderAngle(("Joint " + std::to_string(i+1)).c_str(), &val, rad2deg(min), rad2deg(max));
-	}
-	ImGui::Separator();
-	ImGui::Checkbox("Frames", &s_framesActive);
-	ImGui::Checkbox("Bounding Boxes", &s_bbActive);
-
-	ImGui::End();
-}
-
 void ImGuiLayer::viewport(const ImGuiID dockspaceId)
 {
 	const auto convertSize = [](const ImVec2& vec) -> std::pair<uint16_t, uint16_t> {
@@ -172,4 +153,43 @@ void ImGuiLayer::viewport(const ImGuiID dockspaceId)
 	ImGui::Image(Scene::getFrameBuffer()->getColorAttachment(), ImVec2(s_viewportSize.first, s_viewportSize.second), ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::End();
+}
+
+void ImGuiLayer::robotControls(const ImGuiID dockspaceId)
+{
+	for (auto&[name, entity] : Scene::getEntities()) {
+		if (auto robot = dynamic_cast<Robot*>(entity.get()); robot != nullptr) {
+			// ImGui::SetNextWindowDockID(dockspaceId);
+			ImGui::Begin(name.c_str());
+
+			auto& controlData = robot->getControlData();
+			const auto& joints = robot->getJoints();
+
+			ImGui::Text("%s", robot->getName().c_str());
+			ImGui::Separator();
+			ImGui::Text("%s", "Joint values:");
+			for (size_t i = 0; i < controlData.jointValues.size(); ++i) {
+				ImGui::SliderAngle(joints[i]->name.c_str(), &controlData.jointValues[i], rad2deg(joints[i]->limits.first), rad2deg(joints[i]->limits.second));
+			}
+			ImGui::Separator();
+			ImGui::Checkbox("Frames", &controlData.drawFrames);
+			ImGui::Checkbox("Bounding Boxes", &controlData.drawBoundingBoxes);
+
+			ImGui::End();
+		}
+	}
+
+
+    // ImGui::Begin("Settings");
+
+	// ImGui::Text("Joint values:", "");
+	// for (size_t i = 0; i < s_sliders.size(); ++i) {
+	// 	auto&[val, min, max] = s_sliders[i];
+	// 	ImGui::SliderAngle(("Joint " + std::to_string(i+1)).c_str(), &val, rad2deg(min), rad2deg(max));
+	// }
+	// ImGui::Separator();
+	// ImGui::Checkbox("Frames", &s_framesActive);
+	// ImGui::Checkbox("Bounding Boxes", &s_bbActive);
+
+	// ImGui::End();
 }

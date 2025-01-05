@@ -38,6 +38,14 @@ Mesh::Mesh(const aiScene* source, const glm::mat4& t_mesh_world)
 
 Mesh::~Mesh() = default;
 
+void Mesh::draw(const Camera& camera, const bool drawBB)
+{
+    draw(camera);
+
+    if (m_visible && drawBB)
+        drawBoundingBox(camera);
+}
+
 void Mesh::draw(const Camera& camera)
 {
     if (!m_visible)
@@ -47,9 +55,6 @@ void Mesh::draw(const Camera& camera)
 
     for (const auto& va : m_vertexArrays)
         Renderer::draw(m_shader, va);
-
-    if (ImGuiLayer::getBoundingBoxesActive())
-        drawBoundingBox(camera);
 }
 
 void Mesh::updateTriangulationData()

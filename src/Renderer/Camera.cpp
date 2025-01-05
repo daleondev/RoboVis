@@ -5,7 +5,7 @@
 
 #include "Window/Input.h"
 
-#include "Entities/Mesh.h"
+#include "Entities/Robot.h"
 #include "Entities/Plane.h"
 
 #include "ImGui/ImGuiLayer.h"
@@ -176,7 +176,7 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
     bool hit = false;
     glm::vec3 p_hitTmp_world, p_hit_world;
     for (auto&[name, entity] : Scene::getEntities()) {       
-        if(dynamic_cast<Plane*>(entity.get()) != nullptr || dynamic_cast<Mesh*>(entity.get()) != nullptr) {
+        if(dynamic_cast<Plane*>(entity.get()) != nullptr || dynamic_cast<Robot*>(entity.get()) != nullptr) {
             float dist;
 
             if (entity->rayIntersection(ray_world, p_hitTmp_world, dist)) {

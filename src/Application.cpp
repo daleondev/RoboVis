@@ -8,9 +8,6 @@
 
 #include "ImGui/ImGuiLayer.h"
 
-#include "Entities/Frame.h"
-#include "Entities/Mesh.h"
-
 #include "Util/Log.h"
 
 Application* Application::s_instance = nullptr;
@@ -25,6 +22,7 @@ Application::Application()
 
     Window::create("Application", 1280, 720);
     Window::setEventCallback(BIND_EVENT_FUNCTION(Application::onEvent));
+
     ImGuiLayer::init();
     Scene::init();
     
@@ -49,7 +47,7 @@ int Application::run(int argc, char **argv)
 		return 1;
 	}
 
-    if (!Scene::createRobot(argv[1])) {
+    if (!Scene::createRobot("robot", argv[1])) {
         LOG_FATAL << "Failed to create the robot.";
 		return 1;
     }
@@ -99,6 +97,7 @@ void Application::onEvent(Event& e)
         dispatcher.dispatch<MouseButtonPressedEvent>(Scene::onMouseButtonPressed);
         dispatcher.dispatch<MouseButtonReleasedEvent>(Scene::onMouseButtonReleased);    
         dispatcher.dispatch<MouseScrolledEvent>(Scene::onMouseScrolled);
+        dispatcher.dispatch<MouseDroppedEvent>(Scene::onMouseDropped);
     }
 }
 

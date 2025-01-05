@@ -17,8 +17,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/glfw)
 # assimp
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/assimp)
 
-# # imgui
-# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui)
+# Find GTK
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK REQUIRED gtk+-3.0)
 
 # ----------------------------------
 # preparations
@@ -49,12 +50,12 @@ set(SOURCE_STB ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image/stb_image.cpp)
 set(HEADER_STB ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image/stb_image.h)
 
 # set include directories
-set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image)
+set(INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/imgui ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/stb_image ${GTK_INCLUDE_DIRS})
 
 # set linked libraries
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-set(LIBS Threads::Threads glm glfw GLESv2 assimp)
+set(LIBS Threads::Threads glm glfw GLESv2 assimp ${GTK_LIBRARIES})
 
 # set defines
 set(DEFINES GLFW_INCLUDE_ES3 IMGUI_IMPL_OPENGL_ES3 IMGUI_DEFINE_MATH_OPERATORS GLM_ENABLE_EXPERIMENTAL)

@@ -41,7 +41,9 @@ public:
     Mesh(const aiScene* source, const glm::mat4& t_mesh_world = glm::mat4(1.0f));
     virtual ~Mesh();
 
+    void draw(const Camera& camera, const bool drawBB);
     virtual void draw(const Camera& camera) override;
+    
     virtual void updateTriangulationData() override;
 
     inline virtual bool rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, glm::vec3& p_hit_world, float& minDist) const override;
@@ -52,7 +54,7 @@ private:
 
     void addNode(const aiScene* source, const aiNode* node, glm::mat4 t_node_world, const glm::mat4& t_mesh_world);
 
-    virtual void createBuffers() override;
+    void createBuffers();
 
     std::vector<MeshData> m_meshData;
     std::vector<VertexArray> m_vertexArrays;

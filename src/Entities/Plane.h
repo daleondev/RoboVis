@@ -16,7 +16,7 @@ public:
     virtual void updateTriangulationData() override;
 
 private:   
-    virtual void createBuffers() override;
+    void createBuffers();
 
     inline bool hasTexture() const { return m_material.index() == 0; }
 

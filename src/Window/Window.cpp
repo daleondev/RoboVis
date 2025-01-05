@@ -154,5 +154,17 @@ void Window::init()
         }
     });
 
+    glfwSetDropCallback(s_window, [](GLFWwindow* window, int pathCount, const char* cpaths[]) -> void {
+        auto& data = *reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
+        
+        std::vector<std::string> paths(pathCount);
+        for (int i = 0; i < pathCount; ++i) {
+            paths[i] = cpaths[i];
+        }
+
+        MouseDroppedEvent event(paths);
+        data.eventCallback(event);
+    });
+
     s_initialized = true;
 }
