@@ -137,17 +137,19 @@ void Scene::render(const Timestep dt)
 
     for (const auto&[name, entity] : s_entities) {
 
-        if (Input::isKeyPressed(GLFW_KEY_LEFT))
-            entity->rotate(-500*dt, {0.0f, 1.0f, 0.0f});
+        if (ImGuiLayer::isViewportFocused()) {
+            if (Input::isKeyPressed(GLFW_KEY_LEFT))
+                entity->rotate(-500*dt, {0.0f, 1.0f, 0.0f});
 
-        else if(Input::isKeyPressed(GLFW_KEY_RIGHT))
-            entity->rotate(500*dt, {0.0f, 1.0f, 0.0f});
+            else if(Input::isKeyPressed(GLFW_KEY_RIGHT))
+                entity->rotate(500*dt, {0.0f, 1.0f, 0.0f});
 
-        if (Input::isKeyPressed(GLFW_KEY_UP))
-            entity->rotate(-500*dt, {1.0f, 0.0f, 0.0f});
+            if (Input::isKeyPressed(GLFW_KEY_UP))
+                entity->rotate(-500*dt, {1.0f, 0.0f, 0.0f});
 
-        else if(Input::isKeyPressed(GLFW_KEY_DOWN))
-            entity->rotate(500*dt, {1.0f, 0.0f, 0.0f});
+            else if(Input::isKeyPressed(GLFW_KEY_DOWN))
+                entity->rotate(500*dt, {1.0f, 0.0f, 0.0f});
+        }
 
         entity->draw(CameraController::getCamera());
     }   
@@ -163,9 +165,10 @@ bool Scene::onMouseLeave(MouseLeaveEvent& e)
 
 bool Scene::onMouseMoved(MouseMovedEvent& e)
 {   
+    const auto viewportPos = ImGuiLayer::screenToViewport(e.getPosition());
     if (CameraController::isDragging()) {
         const auto pos = e.getPosition();
-        CameraController::drag({pos.first, pos.second});
+        CameraController::drag(viewportPos);
     }
 
     return true;
@@ -173,15 +176,16 @@ bool Scene::onMouseMoved(MouseMovedEvent& e)
 
 bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
 {
+    const auto viewportPos = ImGuiLayer::screenToViewport(Input::GetMousePosition());
     switch(e.getMouseButton()) {
         case GLFW_MOUSE_BUTTON_LEFT:
         {
-            CameraController::startDraggingTrans(Input::GetMousePosition());
+            CameraController::startDraggingTrans(viewportPos);
             break;
         }
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
-            CameraController::startDraggingRot(Input::GetMousePosition());
+            CameraController::startDraggingRot(viewportPos);
             break;
         }
     }

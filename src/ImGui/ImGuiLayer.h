@@ -2,6 +2,8 @@
 
 #include "Timestep.h"
 
+#include "Events/Event.h"
+
 class ImGuiLayer
 {
 public:
@@ -10,12 +12,18 @@ public:
 
     static void render(const Timestep dt);
 
+    static void onEvent(Event& e);
+
+    static glm::vec2 screenToViewport(const glm::vec2& screenPos);
+
     inline static void addSlider(const float value, std::pair<float, float>& limits) { s_sliders.push_back({value, limits.first, limits.second}); }
     inline static float getSliderValue(const size_t idx) { return std::get<0>(s_sliders[idx]); }
     inline static bool getBoundingBoxesActive() { return s_bbActive; }
     inline static bool getFramesActive() { return s_framesActive; }
 
     inline static std::pair<uint16_t, uint16_t> getViewportSize() { return s_viewportSize; }
+    inline static bool isViewportHovered() { return s_viewportHovered; }
+    inline static bool isViewportFocused() { return s_viewportFocused; }
 
 private:
     static void dockSpace(const std::function<void(const ImGuiID)>& dockspaceContent);
@@ -27,6 +35,9 @@ private:
     static bool s_framesActive;
     
     static std::pair<uint16_t, uint16_t> s_viewportSize;
+    static glm::vec2 s_viewportPos;
+    static bool s_viewportHovered;
+    static bool s_viewportFocused;
 
     
 };

@@ -81,9 +81,12 @@ void Application::update(const Timestep dt)
 
 void Application::onEvent(Event& e)
 {
-    // std::cout << "Event: " << e.toString() << std::endl;
-    EventDispatcher dispatcher(e);
+    ImGuiLayer::onEvent(e);
+    if (e.isHandled())
+        return;
 
+    EventDispatcher dispatcher(e);
+    
     // Window-Event
     if (e.getCategoryFlags() & static_cast<uint8_t>(EventCategory::Window)) {
         dispatcher.dispatch<WindowCloseEvent>(BIND_EVENT_FUNCTION(onWindowClose));

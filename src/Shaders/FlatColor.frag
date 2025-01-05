@@ -1,8 +1,8 @@
 #version 300 es
 
 #ifdef GL_ES
-precision lowp int;
-precision lowp float;
+precision mediump int;
+precision mediump float;
 #endif
 
 uniform vec4 u_color;

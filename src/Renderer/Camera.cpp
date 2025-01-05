@@ -121,17 +121,19 @@ void CameraController::init(const float hFov, const float zNear, const float zFa
 
 void CameraController::update(const Timestep dt)
 {
-    if (Input::isKeyPressed(GLFW_KEY_A))
-        s_camera.rotate(-200 * dt, {0.0f, 1.0f, 0.0f});
+    if (ImGuiLayer::isViewportFocused()) {
+        if (Input::isKeyPressed(GLFW_KEY_A))
+            s_camera.rotate(-200 * dt, {0.0f, 1.0f, 0.0f});
 
-    else if(Input::isKeyPressed(GLFW_KEY_D))
-        s_camera.rotate(200 * dt, {0.0f, 1.0f, 0.0f});
+        else if(Input::isKeyPressed(GLFW_KEY_D))
+            s_camera.rotate(200 * dt, {0.0f, 1.0f, 0.0f});
 
-    if (Input::isKeyPressed(GLFW_KEY_W))
-        s_camera.rotate(200 * dt, {1.0f, 0.0f, 0.0f});
+        if (Input::isKeyPressed(GLFW_KEY_W))
+            s_camera.rotate(200 * dt, {1.0f, 0.0f, 0.0f});
 
-    else if (Input::isKeyPressed(GLFW_KEY_S))
-        s_camera.rotate(-200 * dt, {1.0f, 0.0f, 0.0f});
+        else if (Input::isKeyPressed(GLFW_KEY_S))
+            s_camera.rotate(-200 * dt, {1.0f, 0.0f, 0.0f});
+    }
 }
 
 void CameraController::onResize()
@@ -246,7 +248,8 @@ void CameraController::drag(const glm::vec2& p_mouse_screen)
 
 void CameraController::zoom(const float factor)
 {
-    const auto[v_ray_world, p_ray_world] = cameraRay(Input::GetMousePosition(), s_camera.getPosition());
+    const auto viewportPos = ImGuiLayer::screenToViewport(Input::GetMousePosition());
+    const auto[v_ray_world, p_ray_world] = cameraRay(viewportPos, s_camera.getPosition());
     s_camera.translateWorld(factor*s_scrollFactor*v_ray_world);
 }
 

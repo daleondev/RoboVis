@@ -12,6 +12,9 @@ std::vector<std::tuple<float, float, float>> ImGuiLayer::s_sliders;
 bool ImGuiLayer::s_bbActive;
 bool ImGuiLayer::s_framesActive = true;
 std::pair<uint16_t, uint16_t> ImGuiLayer::s_viewportSize;
+glm::vec2 ImGuiLayer::s_viewportPos;
+bool ImGuiLayer::s_viewportHovered;
+bool ImGuiLayer::s_viewportFocused;
 
 void ImGuiLayer::init()
 {
@@ -74,6 +77,20 @@ void ImGuiLayer::render(const Timestep dt)
 	}
 }
 
+void ImGuiLayer::onEvent(Event& e)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	if (!isViewportHovered())
+		e.setHandled(e.isHandled() | e.isInCategory(EventCategory::Mouse) & io.WantCaptureMouse);
+	if (!isViewportFocused())
+		e.setHandled(e.isHandled() | e.isInCategory(EventCategory::Keyboard) & io.WantCaptureKeyboard);
+}
+
+glm::vec2 ImGuiLayer::screenToViewport(const glm::vec2& screenPos)
+{
+	return screenPos - s_viewportPos;
+}
+
 void ImGuiLayer::dockSpace(const std::function<void(const ImGuiID)>& dockspaceContent)
 {
     static constexpr ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None; //ImGuiDockNodeFlags_NoUndocking;
@@ -104,7 +121,7 @@ void ImGuiLayer::dockSpace(const std::function<void(const ImGuiID)>& dockspaceCo
 
 void ImGuiLayer::settings(const ImGuiID dockspaceId)
 {
-	// ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_Always);
+	// ImGui::SetNextWindowDockID(dockspaceId);
 
     ImGui::Begin("Settings");
 
@@ -122,19 +139,31 @@ void ImGuiLayer::settings(const ImGuiID dockspaceId)
 
 void ImGuiLayer::viewport(const ImGuiID dockspaceId)
 {
-	const auto convSz = [](const ImVec2& vec) -> std::pair<uint16_t, uint16_t> {
+	const auto convertSize = [](const ImVec2& vec) -> std::pair<uint16_t, uint16_t> {
 		return { static_cast<uint16_t>(vec.x), static_cast<uint16_t>(vec.y) };
 	};
 
-	// ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_Always);
+	// --------------------------------------
+
+	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_Always);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("Viewport");
+    ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove);
 	ImGui::PopStyleVar(3);
 
-	const auto size = convSz(ImGui::GetContentRegionAvail());
+	auto dockNode = ImGui::GetWindowDockNode();
+	dockNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingOverMe;
+
+	const auto mainPos = ImGui::GetMainViewport()->Pos;
+	const auto winPos = ImGui::GetWindowPos();
+	s_viewportPos.x = winPos.x - mainPos.x;
+	s_viewportPos.y = winPos.y - mainPos.y;
+	s_viewportHovered = ImGui::IsWindowHovered();
+	s_viewportFocused = ImGui::IsWindowFocused();
+
+	const auto size = convertSize(ImGui::GetContentRegionAvail());
 	if (size != s_viewportSize && size.first > 0 && size.second > 0) {
 		Scene::getFrameBuffer()->resize(size.first, size.second);
 		s_viewportSize = size;

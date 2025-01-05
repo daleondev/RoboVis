@@ -34,14 +34,14 @@ class MouseMovedEvent : public Event {
 public:
 	MouseMovedEvent(const float x, const float y) : m_position(x, y) {}
 
-	inline std::pair<float, float> getPosition() const { return m_position; }
-	inline float getX() const { return m_position.first; }
-	inline float getY() const { return m_position.second; }
+	inline glm::vec2 getPosition() const { return m_position; }
+	inline float getX() const { return m_position.x; }
+	inline float getY() const { return m_position.y; }
 
 	std::string toString() const override
 	{
 		std::stringstream ss;
-		ss << "MouseMovedEvent: " << m_position.first << ", " << m_position.second;
+		ss << "MouseMovedEvent: " << m_position.x << ", " << m_position.y;
 		return ss.str();
 	}
 
@@ -49,7 +49,7 @@ public:
 	EVENT_CLASS_CATEGORY(static_cast<uint8_t>(EventCategory::Mouse) | static_cast<uint8_t>(EventCategory::Input))
 
 private:
-	std::pair<float, float> m_position;
+	glm::vec2 m_position;
 
 };
 
@@ -57,14 +57,14 @@ class MouseScrolledEvent : public Event {
 public:
 	MouseScrolledEvent(const float xOffset, const float yOffset) : m_offsets(xOffset, yOffset) {}
 
-	inline std::pair<float, float> getOffsets() const { return m_offsets; }
-	inline float getXOffset() const { return m_offsets.first; }
-	inline float getYOffset() const { return m_offsets.second; }
+	inline glm::vec2 getOffsets() const { return m_offsets; }
+	inline float getXOffset() const { return m_offsets.x; }
+	inline float getYOffset() const { return m_offsets.y; }
 
 	std::string toString() const override
 	{
 		std::stringstream ss;
-		ss << "MouseScrolledEvent: " << m_offsets.first << ", " << m_offsets.second;
+		ss << "MouseScrolledEvent: " << m_offsets.x << ", " << m_offsets.y;
 		return ss.str();
 	}
 
@@ -72,7 +72,7 @@ public:
 	EVENT_CLASS_CATEGORY(static_cast<uint8_t>(EventCategory::Mouse) | static_cast<uint8_t>(EventCategory::Input))
 
 private:
-	std::pair<float, float> m_offsets;
+	glm::vec2 m_offsets;
 
 };
 
