@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Renderer/Shader.h"
-#include "Renderer/Camera.h"
+#include "Scene/Camera.h"
 
 struct TriangulationData
 {
@@ -9,11 +9,11 @@ struct TriangulationData
     std::vector<std::array<uint16_t, 3>> indices;
 };
 
-class Entity {
+class EntityOld {
 
 public:
-    Entity();
-    virtual ~Entity();
+    EntityOld();
+    virtual ~EntityOld();
 
     virtual void draw(const Camera& camera) = 0;
     virtual void updateTriangulationData() = 0;

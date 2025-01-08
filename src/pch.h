@@ -26,6 +26,9 @@
 // stb_image
 #include <stb_image.h>
 
+// entt
+#include <entt/entt.hpp>
+
 // std
 #include <map>
 #include <ctime>
@@ -34,6 +37,7 @@
 #include <tuple>
 #include <mutex>
 #include <regex>
+#include <random>
 #include <chrono>
 #include <memory>
 #include <vector>

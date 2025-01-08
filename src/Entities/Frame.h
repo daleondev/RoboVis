@@ -4,7 +4,7 @@
 
 #include "Renderer/VertexArray.h"
 
-class Frame : public Entity {
+class Frame : public EntityOld {
 
 public:
     Frame();

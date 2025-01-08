@@ -35,7 +35,7 @@ struct MeshData
     std::vector<std::array<uint16_t, 3>> indices;
 };
 
-class Mesh : public Entity {
+class Mesh : public EntityOld {
 
 public:
     Mesh(const aiScene* source, const glm::mat4& t_mesh_world = glm::mat4(1.0f));

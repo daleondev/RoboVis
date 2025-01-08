@@ -28,7 +28,7 @@ private:
     float m_lastFrameTime;
 
     const aiScene* m_scene;
-    std::vector<std::shared_ptr<Entity>> m_entities;
+    std::vector<std::shared_ptr<EntityOld>> m_entities;
 
     static Application* s_instance;
 };

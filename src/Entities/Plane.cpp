@@ -47,7 +47,7 @@ void Plane::draw(const Camera& camera)
     else
         m_shader->uploadVec4("u_color", std::get<glm::vec4>(m_material));
         
-    Renderer::draw(m_shader, m_vertexArray);
+    // Renderer::draw(m_shader, m_vertexArray);
 }
 
 void Plane::updateTriangulationData()

@@ -31,7 +31,7 @@ void Sphere::draw(const Camera& camera)
     updateMvp(camera);
 
     m_shader->uploadVec4("u_color", m_color);
-    Renderer::draw(m_shader, m_vertexArray);
+    // Renderer::draw(m_shader, m_vertexArray);
 }
 
 // Constants for the sphere

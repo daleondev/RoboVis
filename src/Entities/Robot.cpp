@@ -409,9 +409,9 @@ bool Robot::setupJoint(const std::string& name, const XmlNode& linkNode)
     return true;
 }
 
-void Robot::addEntity(const std::string& name, const std::shared_ptr<Entity>& entity) 
+void Robot::addEntity(const std::string& name, const std::shared_ptr<EntityOld>& entity) 
 { 
-    assert(m_entities.find(name) == m_entities.end() && "Entity already exists");
+    assert(m_entities.find(name) == m_entities.end() && "EntityOld already exists");
     m_entities.emplace(name, entity); 
 }
 

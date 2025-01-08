@@ -1,5 +1,16 @@
 #pragma once
 
+using UUID = uint64_t;
+
+static UUID uuid()
+{
+	static std::random_device randomDevice;
+	static std::mt19937_64 engine(randomDevice());
+	static std::uniform_int_distribution<UUID> uniformDistribution(std::numeric_limits<UUID>::min(), std::numeric_limits<UUID>::max());
+
+	return uniformDistribution(engine);
+}
+
 static std::vector<std::string> splitString(std::string str, const char* delims)
 {
 	std::vector<std::string> parts;

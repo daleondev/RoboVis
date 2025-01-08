@@ -53,8 +53,8 @@ void Mesh::draw(const Camera& camera)
 
     updateMvp(camera);
 
-    for (const auto& va : m_vertexArrays)
-        Renderer::draw(m_shader, va);
+    // for (const auto& va : m_vertexArrays)
+    //     Renderer::draw(m_shader, va);
 }
 
 void Mesh::updateTriangulationData()
@@ -102,7 +102,7 @@ bool Mesh::rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, gl
     if (!hit)
         return false;
 
-    return Entity::rayIntersection(ray_world, p_hit_world, minDist);
+    return EntityOld::rayIntersection(ray_world, p_hit_world, minDist);
 }
 
 void Mesh::updateBoundingBox()
@@ -124,7 +124,7 @@ void Mesh::drawBoundingBox(const Camera& camera)
     m_shaderBB->bind();
     m_shaderBB->uploadMat4("u_mvp", mvp);
     m_shaderBB->uploadVec4("u_color", {0.0f, 1.0f, 0.0, 1.0f});
-    Renderer::draw(m_shaderBB, m_vertexArrayBB);
+    // Renderer::draw(m_shaderBB, m_vertexArrayBB);
 }
 
 void Mesh::addNode(const aiScene* source, const aiNode* node, glm::mat4 t_node_world, const glm::mat4& t_mesh_world)

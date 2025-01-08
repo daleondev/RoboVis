@@ -26,7 +26,7 @@ void Frame::draw(const Camera& camera)
 
     updateMvp(camera);
         
-    Renderer::draw(m_shader, m_vertexArray);
+    // Renderer::draw(m_shader, m_vertexArray);
 }
 
 void Frame::createBuffers()

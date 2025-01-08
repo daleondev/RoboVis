@@ -1,7 +1,8 @@
 #include "pch.h"
 
 #include "ImGuiLayer.h"
-#include "Scene.h"
+
+#include "Scene/Scene.h"
 
 #include "Window/Window.h"
 
@@ -161,64 +162,51 @@ void ImGuiLayer::viewport(const ImGuiID dockspaceId)
 
 void ImGuiLayer::robotControls(const ImGuiID dockspaceId)
 {
-	for (auto&[name, entity] : Scene::getEntities()) {
-		if (auto robot = dynamic_cast<Robot*>(entity.get()); robot != nullptr) {
-			auto& controlData = robot->getControlData();
-			const auto& joints = robot->getJoints();
+	// for (auto&[name, entity] : Scene::getEntities()) {
+	// 	if (auto robot = dynamic_cast<Robot*>(entity.get()); robot != nullptr) {
+	// 		auto& controlData = robot->getControlData();
+	// 		const auto& joints = robot->getJoints();
 
-			// ImGui::SetNextWindowDockID(dockspaceId);
-			ImGui::Begin(name.c_str());
+	// 		// ImGui::SetNextWindowDockID(dockspaceId);
+	// 		ImGui::Begin(name.c_str());
 
-			ImGui::Text("%s", robot->getName().c_str());
+	// 		ImGui::Text("%s", robot->getName().c_str());
 
-			ImGui::Separator();
+	// 		ImGui::Separator();
 
-			ImGui::Text("%s", "Joint values:");
-			for (size_t i = 0; i < controlData.jointValues.size(); ++i) {
-				ImGui::SliderAngle(joints[i]->name.c_str(), &controlData.jointValues[i], rad2deg(joints[i]->limits.first), rad2deg(joints[i]->limits.second));
-			}
-			ImGui::Separator();
+	// 		ImGui::Text("%s", "Joint values:");
+	// 		for (size_t i = 0; i < controlData.jointValues.size(); ++i) {
+	// 			ImGui::SliderAngle(joints[i]->name.c_str(), &controlData.jointValues[i], rad2deg(joints[i]->limits.first), rad2deg(joints[i]->limits.second));
+	// 		}
+	// 		ImGui::Separator();
 
-			ImGui::Checkbox("Frames", &controlData.drawFrames);
-			ImGui::Checkbox("Bounding Boxes", &controlData.drawBoundingBoxes);
+	// 		ImGui::Checkbox("Frames", &controlData.drawFrames);
+	// 		ImGui::Checkbox("Bounding Boxes", &controlData.drawBoundingBoxes);
 
-			ImGui::Separator();
+	// 		ImGui::Separator();
 
-			if (controlData.trajectory) {
-				ImGui::SetNextItemWidth(0.94 * ImGui::GetCurrentWindow()->Size.x);
-				ImGui::SliderFloat("##Traj", &controlData.trajectory->currentTime, controlData.trajectory->times.front(), controlData.trajectory->times.back());				
-				m_sliderTime.val() = controlData.trajectory->currentTime;
-				if (m_sliderTime().edge() && !controlData.trajectory->active && controlData.trajectory->currentIndex > 0 && controlData.trajectory->currentIndex < controlData.trajectory->jointValues.size()) {
-					// controlData.jointValues = controlData.trajectory->jointValues[controlData.trajectory->currentIndex];
-					for (size_t i = 0; i < robot->numJoints(); ++i) {           
-						controlData.jointValues[i] = map(
-							controlData.trajectory->currentTime, 
-							controlData.trajectory->times[controlData.trajectory->currentIndex-1], 			controlData.trajectory->times[controlData.trajectory->currentIndex], 
-							controlData.trajectory->jointValues[controlData.trajectory->currentIndex-1][i], controlData.trajectory->jointValues[controlData.trajectory->currentIndex][i]); 
-					} 
-				}
+	// 		if (controlData.trajectory) {
+	// 			ImGui::SetNextItemWidth(0.94 * ImGui::GetCurrentWindow()->Size.x);
+	// 			ImGui::SliderFloat("##Traj", &controlData.trajectory->currentTime, controlData.trajectory->times.front(), controlData.trajectory->times.back());				
+	// 			m_sliderTime.val() = controlData.trajectory->currentTime;
+	// 			if (m_sliderTime().edge() && !controlData.trajectory->active && controlData.trajectory->currentIndex > 0 && controlData.trajectory->currentIndex < controlData.trajectory->jointValues.size()) {
+	// 				// controlData.jointValues = controlData.trajectory->jointValues[controlData.trajectory->currentIndex];
+	// 				for (size_t i = 0; i < robot->numJoints(); ++i) {           
+	// 					controlData.jointValues[i] = map(
+	// 						controlData.trajectory->currentTime, 
+	// 						controlData.trajectory->times[controlData.trajectory->currentIndex-1], 			controlData.trajectory->times[controlData.trajectory->currentIndex], 
+	// 						controlData.trajectory->jointValues[controlData.trajectory->currentIndex-1][i], controlData.trajectory->jointValues[controlData.trajectory->currentIndex][i]); 
+	// 				} 
+	// 			}
 
-				m_buttonPlay.val() = ImGui::ImageButton("play", TextureLibrary::get("image")->getId(), ImVec2(20, 20), ImVec2(0, 1), ImVec2(1, 0));
-				if (m_buttonPlay().rising()) {
-					controlData.trajectory->active = !controlData.trajectory->active;
-				}
-			}
+	// 			m_buttonPlay.val() = ImGui::ImageButton("play", TextureLibrary::get("image")->getId(), ImVec2(20, 20), ImVec2(0, 1), ImVec2(1, 0));
+	// 			if (m_buttonPlay().rising()) {
+	// 				controlData.trajectory->active = !controlData.trajectory->active;
+	// 			}
+	// 		}
 
-			ImGui::End();
-		}
-	}
-
-
-    // ImGui::Begin("Settings");
-
-	// ImGui::Text("Joint values:", "");
-	// for (size_t i = 0; i < s_sliders.size(); ++i) {
-	// 	auto&[val, min, max] = s_sliders[i];
-	// 	ImGui::SliderAngle(("Joint " + std::to_string(i+1)).c_str(), &val, rad2deg(min), rad2deg(max));
+	// 		ImGui::End();
+	// 	}
 	// }
-	// ImGui::Separator();
-	// ImGui::Checkbox("Frames", &s_framesActive);
-	// ImGui::Checkbox("Bounding Boxes", &s_bbActive);
 
-	// ImGui::End();
 }

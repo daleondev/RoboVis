@@ -11,3 +11,6 @@
 	path = 3rdParty/imgui
 	url = git@github.com:ocornut/imgui.git
 	branch = docking
+[submodule "3rdParty/entt"]
+	path = 3rdParty/entt
+	url = git@github.com:skypjack/entt.git

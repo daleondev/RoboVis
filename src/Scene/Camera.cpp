@@ -175,19 +175,19 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
     float minDist = std::numeric_limits<float>::max();
     bool hit = false;
     glm::vec3 p_hitTmp_world, p_hit_world;
-    for (auto&[name, entity] : Scene::getEntities()) {       
-        if(dynamic_cast<Plane*>(entity.get()) != nullptr || dynamic_cast<Robot*>(entity.get()) != nullptr) {
-            float dist;
+    // for (auto&[name, entity] : Scene::getEntities()) {       
+    //     if(dynamic_cast<Plane*>(entity.get()) != nullptr || dynamic_cast<Robot*>(entity.get()) != nullptr) {
+    //         float dist;
 
-            if (entity->rayIntersection(ray_world, p_hitTmp_world, dist)) {
-                if (!hit || dist < minDist) {
-                    hit = true;
-                    minDist = dist;
-                    p_hit_world = p_hitTmp_world;
-                }
-            }
-        }
-    }
+    //         if (entity->rayIntersection(ray_world, p_hitTmp_world, dist)) {
+    //             if (!hit || dist < minDist) {
+    //                 hit = true;
+    //                 minDist = dist;
+    //                 p_hit_world = p_hitTmp_world;
+    //             }
+    //         }
+    //     }
+    // }
 
     s_draggingRot = true;
     s_screenPosPrev = p_mouse_screen;

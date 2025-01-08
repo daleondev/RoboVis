@@ -2,7 +2,7 @@
 
 #include "Application.h"
 
-#include "Scene.h"
+#include "Scene/Scene.h"
 
 #include "Window/Window.h"
 
@@ -47,10 +47,10 @@ int Application::run(int argc, char **argv)
 		return 1;
 	}
 
-    if (!Scene::createRobot("robot", argv[1])) {
-        LOG_FATAL << "Failed to create the robot.";
-		return 1;
-    }
+    // if (!Scene::createRobot("robot", argv[1])) {
+    //     LOG_FATAL << "Failed to create the robot.";
+	// 	return 1;
+    // }
 
     while (m_running) {
         const float time = static_cast<float>(glfwGetTime());
@@ -73,7 +73,7 @@ void Application::update(const Timestep dt)
 {
     Window::update();
 
-    Scene::render(dt);
+    Scene::update(dt);
     ImGuiLayer::render(dt);
 }
 

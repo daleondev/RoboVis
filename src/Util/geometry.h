@@ -350,6 +350,21 @@ static glm::mat3 eulerZYXext(const glm::vec3& zyx)
     return rotZ(zyx[0])*rotY(zyx[1])*rotX(zyx[2]);
 }
 
+static glm::vec3 toEulerZYX(const glm::mat3& r)
+{
+    float a, b, c;
+    b = std::atan2(-r[2][0], std::sqrt(r[0][0]*r[0][0] + r[1][0]*r[1][0]));
+    if (std::abs(std::abs(b) - std::numbers::pi_v<float>/2.0f) > std::numeric_limits<float>::epsilon()) {
+        a = std::atan2(r[1][0], r[0][0]);
+        c = std::atan2(r[2][1], r[2][2]);
+    }
+    else {
+        a = std::atan2(-r[1][2], -r[0][2]);
+        c = 0.0f;
+    }
+    return {a, b, c};
+}
+
 static float map(float x, float in_min, float in_max, float out_min, float out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;

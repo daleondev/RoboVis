@@ -6,7 +6,7 @@
 
 class Texture2D;
 
-class Plane : public Entity {
+class Plane : public EntityOld {
 
 public:
     Plane(const std::variant<std::shared_ptr<Texture2D>, glm::vec4>& material);

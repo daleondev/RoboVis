@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Camera.h"
+#include "Scene/Camera.h"
 
 #include "Entity.h"
 
@@ -46,7 +46,7 @@ struct RobotControlData
     std::optional<Trajectory> trajectory;
 };
 
-class Robot : public Entity
+class Robot : public EntityOld
 {
 public:
     Robot();
@@ -75,12 +75,12 @@ private:
     bool setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode);
     bool setupJoint(const std::string& name, const XmlNode& jointNode);
 
-    void addEntity(const std::string& name, const std::shared_ptr<Entity>& entity);
+    void addEntity(const std::string& name, const std::shared_ptr<EntityOld>& entity);
 
     glm::mat4 forwardTransform();
 
     std::string m_name;
-    std::unordered_map<std::string, std::shared_ptr<Entity>> m_entities;
+    std::unordered_map<std::string, std::shared_ptr<EntityOld>> m_entities;
 
     std::unordered_map<std::string, std::shared_ptr<LinkData>> m_links;
     std::vector<std::shared_ptr<JointData>> m_joints;

@@ -4,7 +4,7 @@
 
 #include "Renderer/VertexArray.h"
 
-class Sphere : public Entity {
+class Sphere : public EntityOld {
 
 public:
     Sphere(const glm::vec4& color);
