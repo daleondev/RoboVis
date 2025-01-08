@@ -93,9 +93,9 @@ void Robot::update(const Timestep dt)
     if (m_controlData.trajectory) {
         auto& [active, currentTime, currentIndex, jointValues, times] = *m_controlData.trajectory; 
 
-        while (currentTime > times[currentIndex])
+        while (currentTime > times[currentIndex] && currentIndex < jointValues.size())
             currentIndex++;
-        while (currentTime < times[currentIndex-1])
+        while (currentTime < times[currentIndex-1] && currentIndex > 0)
             currentIndex--;
 
         if (active && m_controlData.trajectory->currentTime < m_controlData.trajectory->times.back()) {
@@ -103,9 +103,14 @@ void Robot::update(const Timestep dt)
 
             if (currentIndex > 0 && currentIndex < jointValues.size())
                 for (size_t i = 0; i < numJoints(); ++i) {           
-                    m_controlData.jointValues[i] = map(currentTime, times[currentIndex-1], times[currentIndex], jointValues[currentIndex-1][i], jointValues[currentIndex][i]); 
-                }
+                    m_controlData.jointValues[i] = map(
+                        currentTime, 
+                        times[currentIndex-1],          times[currentIndex], 
+                        jointValues[currentIndex-1][i], jointValues[currentIndex][i]); 
+                } 
         }
+        else if (active)
+            active = false;
     }
 
     forwardTransform();

@@ -189,7 +189,13 @@ void ImGuiLayer::robotControls(const ImGuiID dockspaceId)
 				ImGui::SliderFloat("##Traj", &controlData.trajectory->currentTime, controlData.trajectory->times.front(), controlData.trajectory->times.back());				
 				m_sliderTime.val() = controlData.trajectory->currentTime;
 				if (m_sliderTime().edge() && !controlData.trajectory->active && controlData.trajectory->currentIndex > 0 && controlData.trajectory->currentIndex < controlData.trajectory->jointValues.size()) {
-					controlData.jointValues = controlData.trajectory->jointValues[controlData.trajectory->currentIndex];
+					// controlData.jointValues = controlData.trajectory->jointValues[controlData.trajectory->currentIndex];
+					for (size_t i = 0; i < robot->numJoints(); ++i) {           
+						controlData.jointValues[i] = map(
+							controlData.trajectory->currentTime, 
+							controlData.trajectory->times[controlData.trajectory->currentIndex-1], 			controlData.trajectory->times[controlData.trajectory->currentIndex], 
+							controlData.trajectory->jointValues[controlData.trajectory->currentIndex-1][i], controlData.trajectory->jointValues[controlData.trajectory->currentIndex][i]); 
+					} 
 				}
 
 				m_buttonPlay.val() = ImGui::ImageButton("play", TextureLibrary::get("image")->getId(), ImVec2(20, 20), ImVec2(0, 1), ImVec2(1, 0));
