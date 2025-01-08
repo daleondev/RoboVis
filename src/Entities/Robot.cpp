@@ -14,16 +14,15 @@ Robot::Robot() = default;
 
 Robot::~Robot() = default;
 
-bool Robot::setup(const std::string& sourceDir)
+bool Robot::setup(const std::filesystem::path& sourceDir)
 {
-    const auto robDir = std::filesystem::path(sourceDir);
-    if (!std::filesystem::exists(robDir)) {
+    if (!std::filesystem::exists(sourceDir)) {
         LOG_ERROR << "Robot model directory invalid.";
 		return false;
     }
 
-    const auto urdfDir = std::filesystem::path(sourceDir + "/urdf");
-    auto meshDir = std::filesystem::path(sourceDir + "/meshes");
+    const auto urdfDir = sourceDir / "urdf";
+    auto meshDir = sourceDir / "meshes";
     if (!std::filesystem::exists(urdfDir) || !std::filesystem::exists(meshDir)) {
         LOG_ERROR << "Robot model directory has invalid folder structure.";
 		return false;
@@ -91,6 +90,24 @@ bool Robot::setup(const std::string& sourceDir)
 
 void Robot::update(const Timestep dt)
 {
+    if (m_controlData.trajectory) {
+        auto& [active, currentTime, currentIndex, jointValues, times] = *m_controlData.trajectory; 
+
+        while (currentTime > times[currentIndex])
+            currentIndex++;
+        while (currentTime < times[currentIndex-1])
+            currentIndex--;
+
+        if (active && m_controlData.trajectory->currentTime < m_controlData.trajectory->times.back()) {
+            currentTime += dt;
+
+            if (currentIndex > 0 && currentIndex < jointValues.size())
+                for (size_t i = 0; i < numJoints(); ++i) {           
+                    m_controlData.jointValues[i] = map(currentTime, times[currentIndex-1], times[currentIndex], jointValues[currentIndex-1][i], jointValues[currentIndex][i]); 
+                }
+        }
+    }
+
     forwardTransform();
 }
 
@@ -127,6 +144,30 @@ bool Robot::rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, g
     }
 
     return hit;
+}
+
+void Robot::loadTrajectory(const std::filesystem::path& file)
+{
+    std::ifstream in(file);
+    if (!in) {
+        LOG_ERROR << "Failed to open trajectory file: " << file;
+        return;
+    }
+
+    Trajectory traj;
+    std::string line;
+    while (std::getline(in, line)) {
+        const auto parts = splitString(line, ";, ");
+        std::vector<float> jointValues(numJoints());
+        for (size_t i = 0; i < numJoints(); ++i) {
+            jointValues[i] = std::stof(parts[i]);
+        }
+        traj.jointValues.push_back(jointValues);
+        traj.times.push_back(std::stof(parts[numJoints()]));
+    }
+    m_controlData.trajectory = traj;
+
+    LOG_INFO << "Successfully loaded trajectory file: " << file;
 }
 
 bool Robot::setupLink(const std::string& name, const std::filesystem::path& meshDir, const XmlNode& linkNode)

@@ -14,6 +14,8 @@ std::pair<uint16_t, uint16_t> ImGuiLayer::s_viewportSize;
 glm::vec2 ImGuiLayer::s_viewportPos;
 bool ImGuiLayer::s_viewportHovered;
 bool ImGuiLayer::s_viewportFocused;
+EdgeDetector<float> ImGuiLayer::m_sliderTime;
+EdgeDetector<bool> ImGuiLayer::m_buttonPlay;
 
 void ImGuiLayer::init()
 {
@@ -42,6 +44,8 @@ void ImGuiLayer::init()
 
     ImGui_ImplOpenGL3_DestroyFontsTexture();
     ImGui_ImplOpenGL3_CreateFontsTexture();
+
+	TextureLibrary::load("/home/david/Downloads/pause-play.png", "image");
 }
 
 void ImGuiLayer::shutdown()
@@ -159,21 +163,40 @@ void ImGuiLayer::robotControls(const ImGuiID dockspaceId)
 {
 	for (auto&[name, entity] : Scene::getEntities()) {
 		if (auto robot = dynamic_cast<Robot*>(entity.get()); robot != nullptr) {
-			// ImGui::SetNextWindowDockID(dockspaceId);
-			ImGui::Begin(name.c_str());
-
 			auto& controlData = robot->getControlData();
 			const auto& joints = robot->getJoints();
 
+			// ImGui::SetNextWindowDockID(dockspaceId);
+			ImGui::Begin(name.c_str());
+
 			ImGui::Text("%s", robot->getName().c_str());
+
 			ImGui::Separator();
+
 			ImGui::Text("%s", "Joint values:");
 			for (size_t i = 0; i < controlData.jointValues.size(); ++i) {
 				ImGui::SliderAngle(joints[i]->name.c_str(), &controlData.jointValues[i], rad2deg(joints[i]->limits.first), rad2deg(joints[i]->limits.second));
 			}
 			ImGui::Separator();
+
 			ImGui::Checkbox("Frames", &controlData.drawFrames);
 			ImGui::Checkbox("Bounding Boxes", &controlData.drawBoundingBoxes);
+
+			ImGui::Separator();
+
+			if (controlData.trajectory) {
+				ImGui::SetNextItemWidth(0.94 * ImGui::GetCurrentWindow()->Size.x);
+				ImGui::SliderFloat("##Traj", &controlData.trajectory->currentTime, controlData.trajectory->times.front(), controlData.trajectory->times.back());				
+				m_sliderTime.val() = controlData.trajectory->currentTime;
+				if (m_sliderTime().edge() && !controlData.trajectory->active && controlData.trajectory->currentIndex > 0 && controlData.trajectory->currentIndex < controlData.trajectory->jointValues.size()) {
+					controlData.jointValues = controlData.trajectory->jointValues[controlData.trajectory->currentIndex];
+				}
+
+				m_buttonPlay.val() = ImGui::ImageButton("play", TextureLibrary::get("image")->getId(), ImVec2(20, 20), ImVec2(0, 1), ImVec2(1, 0));
+				if (m_buttonPlay().rising()) {
+					controlData.trajectory->active = !controlData.trajectory->active;
+				}
+			}
 
 			ImGui::End();
 		}

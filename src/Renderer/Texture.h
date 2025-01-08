@@ -17,6 +17,8 @@ public:
     virtual uint32_t getWidth() const { return m_width; }
     virtual uint32_t getHeight() const { return m_height; }
 
+    inline GLuint getId() const { return m_texture; }
+
 private:
     uint32_t m_width;
     uint32_t m_height;

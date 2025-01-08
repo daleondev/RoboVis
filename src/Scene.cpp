@@ -63,7 +63,7 @@ void Scene::init()
     Renderer::init();
 }
 
-std::shared_ptr<Robot> Scene::createRobot(const std::string& name, const std::string& sourceDir, const glm::mat4& initialTransformation)
+std::shared_ptr<Robot> Scene::createRobot(const std::string& name, const std::filesystem::path& sourceDir, const glm::mat4& initialTransformation)
 {
     std::shared_ptr<Robot> robot = std::make_shared<Robot>();
     if (!robot->setup(sourceDir))
@@ -234,10 +234,22 @@ bool Scene::onMouseScrolled(MouseScrolledEvent& e)
 
 bool Scene::onMouseDropped(MouseDroppedEvent& e)
 {
+    LOG_TRACE << e.toString();
+    
     if (e.getNumPaths() == 1) {
         std::filesystem::path path = e.getPath(0);
-        if (std::filesystem::is_directory(path)) {
-            createRobot("test", path.string());
+        // folder -> robot
+        if (ImGuiLayer::isViewportHovered() && std::filesystem::is_directory(path)) {
+            createRobot("test", path);
+        }
+        // assimp extension -> mesh
+        else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && aiIsExtensionSupported(path.extension().c_str()) == AI_TRUE) {
+
+        }
+        // trajectory file -> drag on specific robot control -> load trajectory for robot
+        else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && path.extension().string() == ".txt") {
+            auto robot = getEntity("robot");
+            dynamic_cast<Robot*>(robot.get())->loadTrajectory(path);
         }
     }
 

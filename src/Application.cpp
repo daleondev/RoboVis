@@ -53,7 +53,7 @@ int Application::run(int argc, char **argv)
     }
 
     while (m_running) {
-        const float time = static_cast<float>(glfwGetTime())/1000.0f;
+        const float time = static_cast<float>(glfwGetTime());
         const Timestep dt = time - m_lastFrameTime;
         m_lastFrameTime = time;
 

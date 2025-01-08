@@ -4,6 +4,8 @@
 
 #include "Events/Event.h"
 
+#include "Util/EdgeDetector.h"
+
 class ImGuiLayer
 {
 public:
@@ -28,5 +30,8 @@ private:
     static glm::vec2 s_viewportPos;
     static bool s_viewportHovered;
     static bool s_viewportFocused;
+
+    static EdgeDetector<float> m_sliderTime;
+    static EdgeDetector<bool> m_buttonPlay;
 
 };
