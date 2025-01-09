@@ -7,7 +7,7 @@ public:
     Texture2D(const GLubyte* data, const GLuint width, const GLuint height);
     ~Texture2D();
 
-    void bind(const GLuint slot = 0) const;
+    void bind(const GLuint slot = 0);
     void release() const;
 
     void setMinificationFilter(const GLuint type);
@@ -18,12 +18,14 @@ public:
     virtual uint32_t getHeight() const { return m_height; }
 
     inline GLuint getId() const { return m_texture; }
+    inline GLuint getSlot() const { return m_slot; }
 
 private:
     uint32_t m_width;
     uint32_t m_height;
-
+    
     GLuint m_texture;
+    GLuint m_slot = -1;
     
 };
 

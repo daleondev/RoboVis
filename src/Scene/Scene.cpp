@@ -24,22 +24,19 @@ std::unordered_map<UUID, Entity> Scene::s_entities;
 
 void Scene::init()
 {
-    auto plane = createEntity("Plane");
-    plane.addComponent<PlaneRendererComponent>();
+    auto [width, height] = ImGuiLayer::getViewportSize();
+    if (width <= 0 || height <= 0) {
+        width = Window::getWidth();
+        height = Window::getHeight();
+    }
+    s_frameBuffer = std::make_shared<FrameBuffer>(width, height);
 
-    // auto [width, height] = ImGuiLayer::getViewportSize();
-    // if (width <= 0 || height <= 0) {
-    //     width = Window::getWidth();
-    //     height = Window::getHeight();
-    // }
-    // s_frameBuffer = std::make_shared<FrameBuffer>(width, height);
+    const auto r_cam_world = angleAxisF(M_PIf32/2 + M_PIf32/8, glm::vec3(1.0f, 0.0f, 0.0f)) * angleAxisF(-M_PIf32/4, glm::vec3(0.0f, 0.0f, 1.0f));
+    const auto p_cam_world = glm::vec3(2000.0f, 2000.0f, 2000.0f);
 
-    // const auto r_cam_world = angleAxisF(M_PIf32/2 + M_PIf32/8, glm::vec3(1.0f, 0.0f, 0.0f)) * angleAxisF(-M_PIf32/4, glm::vec3(0.0f, 0.0f, 1.0f));
-    // const auto p_cam_world = glm::vec3(2000.0f, 2000.0f, 2000.0f);
-
-    // glm::mat4 t_cam_world(1.0f);
-    // setMat4Rotation(t_cam_world, r_cam_world);
-    // setMat4Translation(t_cam_world, p_cam_world);
+    glm::mat4 t_cam_world(1.0f);
+    setMat4Rotation(t_cam_world, r_cam_world);
+    setMat4Translation(t_cam_world, p_cam_world);
 
     // // auto origin = Scene::createFrame("Origin");
     // // origin->scale({1000.0f, 1000.0f, 1000.0f});
@@ -48,25 +45,38 @@ void Scene::init()
     // dragPoint->scale({60.0f, 60.0f, 60.0f});
     // dragPoint->setVisible(false);
 
-    // constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
-    // constexpr glm::vec4 dark(0.8f, 0.8f, 0.8f, 1.0f);
+    constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
+    constexpr glm::vec4 dark(0.8f, 0.8f, 0.8f, 1.0f);
 
-    // const uint32_t texWidth = 12;
-    // const uint32_t texHeight = 12;
-    // std::vector<uint32_t> texData(texWidth*texHeight);
-    // for (uint32_t i = 0; i < texWidth; ++i) {
-    //     for (uint32_t j = 0; j < texHeight; ++j) {
-    //         if (i%2==0)
-    //             texData[i*texWidth + j] = vecToRGBA(j%2 ? dark : light);
-    //         else
-    //             texData[i*texWidth + j] = vecToRGBA(j%2 ? light : dark);
-    //     }
-    // }
-    // auto texture = TextureLibrary::create("Checkerboard", texData, texWidth, texHeight);
-    // createPlane("Plane", texture, glm::scale(glm::mat4(1.0f), {12000.0f, 12000.0f, 12000.0f}));
+    const uint32_t texWidth = 12;
+    const uint32_t texHeight = 12;
+    std::vector<uint32_t> texData(texWidth*texHeight);
+    for (uint32_t i = 0; i < texWidth; ++i) {
+        for (uint32_t j = 0; j < texHeight; ++j) {
+            if (i%2==0)
+                texData[i*texWidth + j] = vecToRGBA(j%2 ? dark : light);
+            else
+                texData[i*texWidth + j] = vecToRGBA(j%2 ? light : dark);
+        }
+    }
+    auto texture = TextureLibrary::create("Checkerboard", texData, texWidth, texHeight);
 
-    // CameraController::init(70.0f, 300.0f, 30000.0f, t_cam_world);
-    // Renderer::init();
+    {
+        auto basePlate = createEntity("BasePlate");
+        basePlate.addComponent<PlaneRendererComponent>(texture);
+        auto& trans = basePlate.getComponent<TransformComponent>();
+        trans.scale = {12000.0f, 12000.0f, 12000.0f};
+    }
+
+    {
+        auto origin = createEntity("Origin");
+        origin.addComponent<FrameRendererComponent>();
+        auto& trans = origin.getComponent<TransformComponent>();
+        trans.scale = {1000.0f, 1000.0f, 1000.0f};
+    }
+
+    CameraController::init(70.0f, 300.0f, 30000.0f, t_cam_world);
+    Renderer::init();
 }
 
 void Scene::update(const Timestep dt)
@@ -76,12 +86,23 @@ void Scene::update(const Timestep dt)
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);
 
-    auto group = s_registry.group<TransformComponent>(entt::get<PlaneRendererComponent>);
-    auto shader = ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/FlatColor", "FlatColor");
-    for (auto& entity : group) {
-        auto [transform, plane] = group.get<TransformComponent, PlaneRendererComponent>(entity);
-        const auto camera = CameraController::getCamera();
-        Renderer::drawPlane(transform.get(), plane.m_material, camera);
+    {
+        auto group = s_registry.group<>(entt::get<TransformComponent, PlaneRendererComponent>);
+        for (auto& entity : group) {
+            auto [transform, plane] = group.get<TransformComponent, PlaneRendererComponent>(entity);
+            if (plane.hasTexture())
+                Renderer::drawPlane(transform.get(), std::get<std::shared_ptr<Texture2D>>(plane.m_material));
+            else
+                Renderer::drawPlane(transform.get(), std::get<glm::vec4>(plane.m_material));
+        }
+    }
+
+    {
+        auto group = s_registry.group<>(entt::get<TransformComponent, FrameRendererComponent>);
+        for (auto& entity : group) {
+            auto& transform = group.get<TransformComponent>(entity);
+            Renderer::drawFrame(transform.get());
+        }
     }
     
     s_frameBuffer->release();

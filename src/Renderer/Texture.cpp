@@ -87,10 +87,11 @@ Texture2D::~Texture2D()
     glDeleteTextures(1, &m_texture);
 }
 
-void Texture2D::bind(const GLuint slot) const
+void Texture2D::bind(const GLuint slot)
 {
     glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(GL_TEXTURE_2D, m_texture);
+    m_slot = slot;
 }
 
 void Texture2D::release() const

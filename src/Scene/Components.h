@@ -64,4 +64,14 @@ struct PlaneRendererComponent
     PlaneRendererComponent(const PlaneRendererComponent&) = default;
     PlaneRendererComponent(const glm::vec4& color) : m_material(color) {}
     PlaneRendererComponent(const std::shared_ptr<Texture2D>& texture) : m_material(texture) {}
+
+    inline bool hasTexture() const { return m_material.index() == 1; }
+};
+
+struct FrameRendererComponent
+{
+    int test;
+
+    FrameRendererComponent() = default;
+    FrameRendererComponent(const FrameRendererComponent&) = default;
 };
