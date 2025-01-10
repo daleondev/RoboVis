@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Timestep.h"
-
 #include "Events/WindowEvent.h"
 
 #include "Entities/Entity.h"
+
+#include "Util/Timestep.h"
 
 class Application {
 public:
@@ -28,7 +28,6 @@ private:
     float m_lastFrameTime;
 
     const aiScene* m_scene;
-    std::vector<std::shared_ptr<EntityOld>> m_entities;
 
     static Application* s_instance;
 };

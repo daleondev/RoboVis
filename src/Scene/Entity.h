@@ -3,8 +3,6 @@
 #include "Scene.h"
 #include "Components.h"
 
-#include <entt/entt.hpp>
-
 class Entity
 {
 public:

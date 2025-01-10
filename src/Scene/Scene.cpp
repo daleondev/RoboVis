@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Entity.h"
 #include "Components.h"
+#include "Camera.h"
 
 #include "Window/Input.h"
 
@@ -10,26 +11,43 @@
 
 #include "ImGui/ImGuiLayer.h"
 
-#include "Entities/Frame.h"
-#include "Entities/Mesh.h"
-#include "Entities/Plane.h"
-#include "Entities/Sphere.h"
-#include "Entities/Robot.h"
-
 #include "Util/geometry.h"
+#include "Util/MeshLoader.h"
 
 std::shared_ptr<FrameBuffer> Scene::s_frameBuffer;
 entt::registry Scene::s_registry;
 std::unordered_map<UUID, Entity> Scene::s_entities;
 
+struct EntitiyIds
+{
+    inline static UUID basePlateId = UUID_NULL;
+    inline static UUID originId = UUID_NULL;
+    inline static UUID dragMarkerId = UUID_NULL;
+};
+
+template<typename... Components>
+static void registerOnConstruct(entt::registry& registry, auto callback) {
+    (..., registry.on_construct<Components>().template connect<[callback](entt::registry& registry, entt::entity handle) { 
+        callback(registry, handle, registry.get<Components>(handle)); 
+    }>());
+}
+
 void Scene::init()
 {
+    //------------------------------------------------------
+    //                      Viewport
+    //------------------------------------------------------
+
     auto [width, height] = ImGuiLayer::getViewportSize();
     if (width <= 0 || height <= 0) {
         width = Window::getWidth();
         height = Window::getHeight();
     }
     s_frameBuffer = std::make_shared<FrameBuffer>(width, height);
+
+    //------------------------------------------------------
+    //                      Camera
+    //------------------------------------------------------
 
     const auto r_cam_world = angleAxisF(M_PIf32/2 + M_PIf32/8, glm::vec3(1.0f, 0.0f, 0.0f)) * angleAxisF(-M_PIf32/4, glm::vec3(0.0f, 0.0f, 1.0f));
     const auto p_cam_world = glm::vec3(2000.0f, 2000.0f, 2000.0f);
@@ -38,42 +56,79 @@ void Scene::init()
     setMat4Rotation(t_cam_world, r_cam_world);
     setMat4Translation(t_cam_world, p_cam_world);
 
-    // // auto origin = Scene::createFrame("Origin");
-    // // origin->scale({1000.0f, 1000.0f, 1000.0f});
+    //------------------------------------------------------
+    //                      Registry
+    //------------------------------------------------------
 
-    // auto dragPoint = Scene::createSphere("DragPoint");
-    // dragPoint->scale({60.0f, 60.0f, 60.0f});
-    // dragPoint->setVisible(false);
+    registerOnConstruct<PlaneRendererComponent, FrameRendererComponent, SphereRendererComponent>(s_registry, [](entt::registry& registry, Entity entity, auto component) -> void {
+        entity.addComponent<TransformComponent>();
+        entity.addComponent<VisibilityComponent>();
+        auto& triangulation = entity.addComponent<TriangulationComponent>();
+        triangulation.data = component.createTriangulation();
+    });
 
-    constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
-    constexpr glm::vec4 dark(0.8f, 0.8f, 0.8f, 1.0f);
+    s_registry.on_construct<MeshRendererComponent>().connect<[](entt::registry& registry, Entity entity) -> void {
+        entity.addComponent<TransformComponent>();
+        entity.addComponent<VisibilityComponent>();
+        entity.addComponent<TriangulationComponent>();
+        entity.addComponent<BoundingBoxComponent>();
+    }>();
 
-    const uint32_t texWidth = 12;
-    const uint32_t texHeight = 12;
-    std::vector<uint32_t> texData(texWidth*texHeight);
-    for (uint32_t i = 0; i < texWidth; ++i) {
-        for (uint32_t j = 0; j < texHeight; ++j) {
-            if (i%2==0)
-                texData[i*texWidth + j] = vecToRGBA(j%2 ? dark : light);
-            else
-                texData[i*texWidth + j] = vecToRGBA(j%2 ? light : dark);
-        }
-    }
-    auto texture = TextureLibrary::create("Checkerboard", texData, texWidth, texHeight);
-
+    //------------------------------------------------------
+    //                      Base Plate Plane
+    //------------------------------------------------------
+ 
     {
+        constexpr glm::vec4 light(0.9f, 0.9f, 0.9f, 1.0f);
+        constexpr glm::vec4 dark(0.8f, 0.8f, 0.8f, 1.0f);
+
+        const uint32_t texWidth = 12;
+        const uint32_t texHeight = 12;
+        std::vector<uint32_t> texData(texWidth*texHeight);
+        for (uint32_t i = 0; i < texWidth; ++i) {
+            for (uint32_t j = 0; j < texHeight; ++j) {
+                if (i%2==0)
+                    texData[i*texWidth + j] = vecToRGBA(j%2 ? dark : light);
+                else
+                    texData[i*texWidth + j] = vecToRGBA(j%2 ? light : dark);
+            }
+        }
+        const auto texture = TextureLibrary::create("Checkerboard", texData, texWidth, texHeight);
+
         auto basePlate = createEntity("BasePlate");
         basePlate.addComponent<PlaneRendererComponent>(texture);
+        EntitiyIds::basePlateId = basePlate.getComponent<IdComponent>().id;
         auto& trans = basePlate.getComponent<TransformComponent>();
         trans.scale = {12000.0f, 12000.0f, 12000.0f};
     }
 
+    //------------------------------------------------------
+    //                      Origin Frame
+    //------------------------------------------------------
+
     {
         auto origin = createEntity("Origin");
         origin.addComponent<FrameRendererComponent>();
+        EntitiyIds::originId = origin.getComponent<IdComponent>().id;
         auto& trans = origin.getComponent<TransformComponent>();
         trans.scale = {1000.0f, 1000.0f, 1000.0f};
     }
+
+    //------------------------------------------------------
+    //                      Drag Marker Sphere
+    //------------------------------------------------------
+
+    {
+        auto dragMarker = createEntity("DragMarker");
+        dragMarker.addComponent<SphereRendererComponent>(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        EntitiyIds::dragMarkerId = dragMarker.getComponent<IdComponent>().id;
+        auto& trans = dragMarker.getComponent<TransformComponent>();
+        trans.scale = {60.0f, 60.0f, 60.0f};
+    }
+
+    //------------------------------------------------------
+    //                      Init
+    //------------------------------------------------------
 
     CameraController::init(70.0f, 300.0f, 30000.0f, t_cam_world);
     Renderer::init();
@@ -84,24 +139,57 @@ void Scene::update(const Timestep dt)
     s_frameBuffer->bind();
 
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
-    CameraController::update(dt);
+    CameraController::update(dt);   
 
-    {
-        auto group = s_registry.group<>(entt::get<TransformComponent, PlaneRendererComponent>);
-        for (auto& entity : group) {
-            auto [transform, plane] = group.get<TransformComponent, PlaneRendererComponent>(entity);
-            if (plane.hasTexture())
-                Renderer::drawPlane(transform.get(), std::get<std::shared_ptr<Texture2D>>(plane.m_material));
-            else
-                Renderer::drawPlane(transform.get(), std::get<glm::vec4>(plane.m_material));
-        }
-    }
+    // // draw planes
+    // {
+    //     auto group = s_registry.group<PlaneRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent>());
+    //     for (auto [entity, plane, transform, visibility] : group.each()) {
+    //         if (!visibility.visible)
+    //             continue;
 
+    //         if (plane.hasTexture())
+    //             Renderer::drawPlane(transform.get(), std::get<std::shared_ptr<Texture2D>>(plane.material));
+    //         else
+    //             Renderer::drawPlane(transform.get(), std::get<glm::vec4>(plane.material));
+    //     }
+    // }
+
+    // // draw frames
+    // {
+    //     auto group = s_registry.group<FrameRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent>());
+    //     for (auto [entity, frame, transform, visibility] : group.each()) {
+    //         if (!visibility.visible)
+    //             continue;
+
+    //         Renderer::drawFrame(transform.get());
+    //     }
+    // }
+
+    // // draw spheres
+    // {
+    //     auto group = s_registry.group<SphereRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent>());
+    //     for (auto [entity, sphere, transform, visibility] : group.each()) {
+    //         if (!visibility.visible)
+    //             continue;
+
+    //         Renderer::drawSphere(transform.get(), sphere.color);
+    //     }
+    // }
+
+    // draw meshes
     {
-        auto group = s_registry.group<>(entt::get<TransformComponent, FrameRendererComponent>);
-        for (auto& entity : group) {
-            auto& transform = group.get<TransformComponent>(entity);
-            Renderer::drawFrame(transform.get());
+        auto group = s_registry.group<MeshRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent, TriangulationComponent, BoundingBoxComponent>());
+        for (auto [entity, mesh, transform, visibility, triangulation, boundingBox] : group.each()) {
+            if (!visibility.visible)
+                continue;
+
+            triangulation.update(transform.get());
+            boundingBox.update(triangulation.limits);
+
+            Renderer::drawMesh(transform.get(), mesh.id);
+            Renderer::drawBox(transform.get(), mesh.id, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+            // LOG_TRACE << "Render Mesh";
         }
     }
     
@@ -114,9 +202,7 @@ Entity Scene::createEntity(const std::string& tag)
 
     auto& idComponent = entity.addComponent<IdComponent>();
     entity.addComponent<TagComponent>(tag.empty() ? "Entity" : tag);
-    entity.addComponent<TransformComponent>();
     
-    // s_entities[idComponent.id] = entity;
     s_entities.emplace(idComponent.id, entity);
     return entity;
 }
@@ -260,11 +346,12 @@ bool Scene::onMouseButtonPressed(MouseButtonPressedEvent& e)
         }
     }
 
-    // if (CameraController::isDragging() && entityExists("DragPoint")) {
-    //     auto marker = getEntity("DragPoint");
-    //     marker->setTranslation(CameraController::getDraggingPosition());
-    //     marker->setVisible(true);
-    // }
+    if (CameraController::isDragging() && EntitiyIds::dragMarkerId != UUID_NULL) {
+        const auto entity = s_entities.at(EntitiyIds::dragMarkerId);
+        auto [transform, visibility] = s_registry.get<TransformComponent, VisibilityComponent>(entity);
+        transform.translation = CameraController::getDraggingPosition();
+        visibility.visible = true;
+    }
 
     return true;
 }
@@ -280,8 +367,10 @@ bool Scene::onMouseButtonReleased(MouseButtonReleasedEvent& e)
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
             CameraController::stopDraggingRot();
-            // if (entityExists("DragPoint"))
-            //     getEntity("DragPoint")->setVisible(false);
+            if (EntitiyIds::dragMarkerId != UUID_NULL) {
+                const auto entity = s_entities.at(EntitiyIds::dragMarkerId);
+                s_registry.get<VisibilityComponent>(entity).visible = false;
+            }
             break;
         }
     }
@@ -300,22 +389,40 @@ bool Scene::onMouseDropped(MouseDroppedEvent& e)
 {
     LOG_TRACE << e.toString();
     
-    // if (e.getNumPaths() == 1) {
-    //     std::filesystem::path path = e.getPath(0);
-    //     // folder -> robot
-    //     if (ImGuiLayer::isViewportHovered() && std::filesystem::is_directory(path)) {
-    //         createRobot("test", path);
-    //     }
-    //     // assimp extension -> mesh
-    //     else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && aiIsExtensionSupported(path.extension().c_str()) == AI_TRUE) {
+    if (e.getNumPaths() == 1) {
+        std::filesystem::path path = e.getPath(0);
+        // folder -> robot
+        if (ImGuiLayer::isViewportHovered() && std::filesystem::is_directory(path)) {
+            // createRobot("test", path);
+        }
+        // assimp extension -> mesh
+        else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && aiIsExtensionSupported(path.extension().c_str()) == AI_TRUE) {
+            auto mesh = MeshLibrary::load(path);
+            Renderer::addMeshData(mesh->id, mesh->data);
 
-    //     }
-    //     // trajectory file -> drag on specific robot control -> load trajectory for robot
-    //     else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && path.extension().string() == ".txt") {
-    //         auto robot = getEntity("robot");
-    //         dynamic_cast<Robot*>(robot.get())->loadTrajectory(path);
-    //     }
-    // }
+            auto meshEntity = createEntity("Mesh");
+            meshEntity.addComponent<MeshRendererComponent>(mesh->id);
+            auto& triangulation = meshEntity.getComponent<TriangulationComponent>();
+            for (auto& vertex : mesh->data.vertices)
+                triangulation.data->vertices.emplace_back(vertex.position);
+            triangulation.data->indices = mesh->data.indices;
+
+            auto& boundingBox = meshEntity.getComponent<BoundingBoxComponent>();
+            triangulation.update(glm::mat4(1.0f));
+            boundingBox.update(triangulation.limits);
+
+            BoxData boxData;
+            boxData.vertices = boundingBox.data->vertices;
+            Renderer::addBoxData(mesh->id, boxData);
+
+            LOG_TRACE << "added mesh " << path;
+        }
+        // trajectory file -> drag on specific robot control -> load trajectory for robot
+        else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && path.extension().string() == ".txt") {
+            // auto robot = getEntity("robot");
+            // dynamic_cast<Robot*>(robot.get())->loadTrajectory(path);
+        }
+    }
 
     return true;
 }

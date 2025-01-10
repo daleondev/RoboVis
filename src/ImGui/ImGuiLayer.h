@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Timestep.h"
-
 #include "Events/Event.h"
 
 #include "Util/EdgeDetector.h"
+#include "Util/Timestep.h"
 
 class ImGuiLayer
 {

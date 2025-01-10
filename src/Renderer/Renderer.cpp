@@ -2,10 +2,13 @@
 
 #include "Renderer.h"
 
+#include "Scene/Camera.h"
+
 RenderData Renderer::s_planeData;
 RenderData Renderer::s_frameData;
-RenderData Renderer::s_meshData;
 RenderData Renderer::s_sphereData;
+std::unordered_map<UUID, RenderData> Renderer::s_meshData;
+std::unordered_map<UUID, RenderData> Renderer::s_boxData;
 
 void Renderer::init()
 {
@@ -46,6 +49,24 @@ void Renderer::init()
     s_frameData.indexBuffer = std::make_shared<IndexBuffer>();
     s_frameData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(FrameData::indices.data()), FrameData::indices.size() * 3);
     s_frameData.vertexArray->setIndexBuffer(s_frameData.indexBuffer);
+
+    //------------------------------------------------------
+    //                      Sphere
+    //------------------------------------------------------
+
+    s_sphereData.shader = ShaderLibrary::exists("Sphere") ?  ShaderLibrary::get("Sphere") :
+                                                            ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Sphere", "Sphere");
+
+    const auto [vertices, indices] = SphereData::generateSphere();
+    s_sphereData.vertexArray = std::make_shared<VertexArray>();
+    s_sphereData.vertexBuffer = std::make_shared<VertexBuffer>();
+    s_sphereData.vertexBuffer->allocate(reinterpret_cast<const float*>(vertices.data()), vertices.size() * sizeof(SphereData::Vertex)/sizeof(float));
+    s_sphereData.vertexBuffer->setLayout(SphereData::layout);
+    s_sphereData.vertexArray->addVertexBuffer(s_sphereData.vertexBuffer);
+
+    s_sphereData.indexBuffer = std::make_shared<IndexBuffer>();
+    s_sphereData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(indices.data()), indices.size() * 3);
+    s_sphereData.vertexArray->setIndexBuffer(s_sphereData.indexBuffer);
 }
 
 void Renderer::shutdown()
@@ -99,4 +120,76 @@ void Renderer::drawFrame(const glm::mat4& transform)
     s_frameData.shader->bind();
     s_frameData.shader->uploadMat4("u_mvp", mvp);
     draw(s_frameData.shader, s_frameData.vertexArray);
+}
+
+void Renderer::drawSphere(const glm::mat4& transform, const glm::vec4& color)
+{
+    const auto& camera = CameraController::getCamera();
+    glm::mat4 mvp = camera.getProjection() * camera.getView() * glm::transpose(transform);
+
+    s_sphereData.shader->bind();
+    s_sphereData.shader->uploadMat4("u_mvp", mvp);
+    s_sphereData.shader->uploadVec4("u_color", color);
+    draw(s_sphereData.shader, s_sphereData.vertexArray);
+}
+
+void Renderer::drawMesh(const glm::mat4& transform, const UUID meshId)
+{
+    const auto& camera = CameraController::getCamera();
+    glm::mat4 mvp = camera.getProjection() * camera.getView() * glm::transpose(transform);
+
+    auto& meshData = s_meshData[meshId];
+    meshData.shader->bind();
+    meshData.shader->uploadMat4("u_mvp", mvp);
+    draw(meshData.shader, meshData.vertexArray);
+}
+
+void Renderer::drawBox(const glm::mat4& transform, const UUID boxId, const glm::vec4& color)
+{
+    const auto& camera = CameraController::getCamera();
+    glm::mat4 mvp = camera.getProjection() * camera.getView() * glm::transpose(transform);
+
+    auto& boxData = s_boxData[boxId];
+    boxData.shader->bind();
+    boxData.shader->uploadMat4("u_mvp", mvp);
+    s_sphereData.shader->uploadVec4("u_color", color);
+    draw(boxData.shader, boxData.vertexArray);
+}
+
+void Renderer::addMeshData(const UUID meshId, const MeshData& data)
+{
+    RenderData meshData;
+    meshData.shader = ShaderLibrary::exists("Mesh") ?   ShaderLibrary::get("Mesh") :
+                                                        ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Mesh", "Mesh");
+
+    meshData.vertexArray = std::make_shared<VertexArray>();
+    meshData.vertexBuffer = std::make_shared<VertexBuffer>();
+    meshData.vertexBuffer->allocate(reinterpret_cast<const float*>(data.vertices.data()), data.vertices.size() * sizeof(MeshData::Vertex)/sizeof(float));
+    meshData.vertexBuffer->setLayout(MeshData::layout);
+    meshData.vertexArray->addVertexBuffer(s_frameData.vertexBuffer);
+
+    meshData.indexBuffer = std::make_shared<IndexBuffer>();
+    meshData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(data.indices.data()), data.indices.size() * 3);
+    meshData.vertexArray->setIndexBuffer(s_frameData.indexBuffer);
+
+    s_meshData.emplace(meshId, meshData);   
+}
+
+void Renderer::addBoxData(const UUID boxId, const BoxData& data)
+{
+    RenderData boxData;
+    boxData.shader = ShaderLibrary::exists("Box") ? ShaderLibrary::get("Box") :
+                                                    ShaderLibrary::load("/home/david/Schreibtisch/RoboVis/src/Shaders/Box", "Box");
+
+    boxData.vertexArray = std::make_shared<VertexArray>();
+    boxData.vertexBuffer = std::make_shared<VertexBuffer>();
+    boxData.vertexBuffer->allocate(reinterpret_cast<const float*>(data.vertices.data()), data.vertices.size() * sizeof(BoxData::Vertex)/sizeof(float));
+    boxData.vertexBuffer->setLayout(BoxData::layout);
+    boxData.vertexArray->addVertexBuffer(s_frameData.vertexBuffer);
+
+    boxData.indexBuffer = std::make_shared<IndexBuffer>();
+    boxData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(BoxData::indices.data()), BoxData::indices.size() * 3);
+    boxData.vertexArray->setIndexBuffer(s_frameData.indexBuffer);
+
+    s_boxData.emplace(boxId, boxData);
 }

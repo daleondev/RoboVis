@@ -3,6 +3,7 @@
 #include "ImGuiLayer.h"
 
 #include "Scene/Scene.h"
+#include "Scene/Camera.h"
 
 #include "Window/Window.h"
 

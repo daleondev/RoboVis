@@ -1,12 +1,15 @@
 #pragma once
 
+#include "pch.h"
+
 using UUID = uint64_t;
+static constexpr UUID UUID_NULL = std::numeric_limits<UUID>::min();
 
 static UUID uuid()
 {
 	static std::random_device randomDevice;
 	static std::mt19937_64 engine(randomDevice());
-	static std::uniform_int_distribution<UUID> uniformDistribution(std::numeric_limits<UUID>::min(), std::numeric_limits<UUID>::max());
+	static std::uniform_int_distribution<UUID> uniformDistribution(std::numeric_limits<UUID>::min()+1, std::numeric_limits<UUID>::max());
 
 	return uniformDistribution(engine);
 }
