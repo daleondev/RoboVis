@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Renderer/RenderData.h"
+
 #include "Util/util.h"
 #include "Util/geometry.h"
-
-#include "Renderer/RenderData.h"
+#include "Util/Log.h"
 
 //------------------------------------------------------
 //                  Identification
@@ -56,9 +57,10 @@ struct TransformComponent
 
     glm::mat4 get() const
     {
-        return glm::translate(glm::mat4(1.0f), translation)
-            * glm::mat4(eulerZYX(rotation))
-            * glm::scale(glm::mat4(1.0f), scale);
+        glm::mat4 transform(1.0f);
+        setMat4Translation(transform, translation);
+        setMat4Rotation(transform, eulerZYX(rotation));
+        return glm::transpose(glm::scale(glm::transpose(transform), scale));
     }
 };
 
@@ -81,11 +83,12 @@ struct VisibilityComponent
 struct BoundingBoxData
 {
     std::array<glm::vec3, 8> vertices;
-    static constexpr std::array<std::array<uint16_t, 3>, 12> indices = BoxData::indices;
+    static constexpr std::array<std::array<uint32_t, 3>, 12> indices = BoxData::indices;
 };
 
 struct BoundingBoxComponent
 {
+    bool visible = false;
     std::unique_ptr<BoundingBoxData> data;
     glm::vec4 color;
 
@@ -105,6 +108,29 @@ struct BoundingBoxComponent
         data->vertices[6] = {upper.x, upper.y, upper.z};
         data->vertices[7] = {lower.x, upper.y, upper.z};
     }
+
+    bool rayIntersects(const std::tuple<glm::vec3, glm::vec3>& ray_world) const
+    {
+        const auto& [v_ray_world, p_ray_world] = ray_world;
+
+        bool hit = false;
+        for (const auto& indices : data->indices) {
+            std::array<glm::vec3, 3> p_vertices_world;
+            for (size_t i = 0; i < 3; ++i)
+                p_vertices_world[i] = data->vertices[indices[i]];
+
+            const auto[n_tri_world, p_tri_world] = trianglePlane(p_vertices_world);
+            glm::vec3 p_hitTmp_world;                               
+            if (intersectionLinePlane(n_tri_world, p_tri_world, v_ray_world, p_ray_world, p_hitTmp_world) && 
+                pointInTriangle(n_tri_world, p_tri_world, p_vertices_world, p_hitTmp_world)) {   
+
+                hit = true;
+                break;
+            }
+        }
+
+        return hit;
+    }
 };
 
 //------------------------------------------------------
@@ -114,12 +140,13 @@ struct BoundingBoxComponent
 struct TriangulationData
 {
     std::vector<glm::vec3> vertices;
-    std::vector<std::array<uint16_t, 3>> indices;
+    std::vector<std::array<uint32_t, 3>> indices;
 };
 
 struct TriangulationComponent
 {
     std::unique_ptr<TriangulationData> data;
+    std::vector<glm::vec3> updatedVertices;
     std::pair<glm::vec3, glm::vec3> limits;
 
     TriangulationComponent() : data{std::make_unique<TriangulationData>()} {}
@@ -130,8 +157,13 @@ struct TriangulationComponent
         auto& [lower, upper] = limits;
         lower.x = lower.y = lower.z = std::numeric_limits<float>::max();
         upper.x = upper.y = upper.z = std::numeric_limits<float>::min();
-        for (auto& vertex : data->vertices) {
-            vertex = glm::vec4(vertex, 1.0f) * transform;
+
+        if (updatedVertices.size() != data->vertices.size()) 
+            updatedVertices.resize(data->vertices.size());
+            
+        for (size_t i = 0; i < updatedVertices.size(); ++i) {
+            auto& vertex = updatedVertices[i];   
+            vertex = glm::vec4(data->vertices[i], 1.0f) * transform;
             lower.x = std::min(lower.x, vertex.x);
             lower.y = std::min(lower.y, vertex.y);
             lower.z = std::min(lower.z, vertex.z);
@@ -139,6 +171,34 @@ struct TriangulationComponent
             upper.y = std::max(upper.y, vertex.y);
             upper.z = std::max(upper.z, vertex.z);
         }
+    }
+
+    bool rayIntersection(const std::tuple<glm::vec3, glm::vec3>& ray_world, glm::vec3& p_hit_world, float& minDist) const
+    {
+        const auto& [v_ray_world, p_ray_world] = ray_world;
+
+        minDist = std::numeric_limits<float>::max();
+        bool hit = false;
+        for (const auto& indices : data->indices) {
+            std::array<glm::vec3, 3> p_vertices_world;
+            for (size_t i = 0; i < 3; ++i)
+                p_vertices_world[i] = updatedVertices[indices[i]];
+
+            const auto[n_tri_world, p_tri_world] = trianglePlane(p_vertices_world);
+            glm::vec3 p_hitTmp_world;                               
+            if (intersectionLinePlane(n_tri_world, p_tri_world, v_ray_world, p_ray_world, p_hitTmp_world) && 
+                pointInTriangle(n_tri_world, p_tri_world, p_vertices_world, p_hitTmp_world)) {  
+
+                const float dist = glm::length(p_hitTmp_world - p_ray_world);
+                if (!hit || dist < minDist) {
+                    hit = true;
+                    p_hit_world = p_hitTmp_world;
+                    minDist = dist;
+                }
+            }
+        }
+
+        return hit;
     }
 };
 

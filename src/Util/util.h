@@ -7,11 +7,8 @@ static constexpr UUID UUID_NULL = std::numeric_limits<UUID>::min();
 
 static UUID uuid()
 {
-	static std::random_device randomDevice;
-	static std::mt19937_64 engine(randomDevice());
-	static std::uniform_int_distribution<UUID> uniformDistribution(std::numeric_limits<UUID>::min()+1, std::numeric_limits<UUID>::max());
-
-	return uniformDistribution(engine);
+	static UUID id = UUID_NULL;
+	return ++id;
 }
 
 static std::vector<std::string> splitString(std::string str, const char* delims)

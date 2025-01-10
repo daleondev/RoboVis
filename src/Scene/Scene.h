@@ -43,5 +43,6 @@ private:
     static std::unordered_map<UUID, Entity> s_entities;
 
     friend class Entity;
+    friend class CameraController;
 
 };

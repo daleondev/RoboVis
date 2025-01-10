@@ -41,11 +41,11 @@ IndexBuffer::~IndexBuffer()
     glDeleteBuffers(1, &m_buffer);
 }
 
-void IndexBuffer::allocate(const GLushort* indices, const size_t count)
+void IndexBuffer::allocate(const GLuint* indices, const size_t count)
 {
     m_count = count;
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, count*sizeof(GLushort), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, count*sizeof(GLuint), indices, GL_STATIC_DRAW);
 }
 
 void IndexBuffer::bind() const

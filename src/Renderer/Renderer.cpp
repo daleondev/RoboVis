@@ -30,7 +30,7 @@ void Renderer::init()
     s_planeData.vertexArray->addVertexBuffer(s_planeData.vertexBuffer);
 
     s_planeData.indexBuffer = std::make_shared<IndexBuffer>();
-    s_planeData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(PlaneData::indices.data()), PlaneData::indices.size() * 3);
+    s_planeData.indexBuffer->allocate(reinterpret_cast<const uint32_t*>(PlaneData::indices.data()), PlaneData::indices.size() * 3);
     s_planeData.vertexArray->setIndexBuffer(s_planeData.indexBuffer);
 
     //------------------------------------------------------
@@ -47,7 +47,7 @@ void Renderer::init()
     s_frameData.vertexArray->addVertexBuffer(s_frameData.vertexBuffer);
 
     s_frameData.indexBuffer = std::make_shared<IndexBuffer>();
-    s_frameData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(FrameData::indices.data()), FrameData::indices.size() * 3);
+    s_frameData.indexBuffer->allocate(reinterpret_cast<const uint32_t*>(FrameData::indices.data()), FrameData::indices.size() * 3);
     s_frameData.vertexArray->setIndexBuffer(s_frameData.indexBuffer);
 
     //------------------------------------------------------
@@ -65,7 +65,7 @@ void Renderer::init()
     s_sphereData.vertexArray->addVertexBuffer(s_sphereData.vertexBuffer);
 
     s_sphereData.indexBuffer = std::make_shared<IndexBuffer>();
-    s_sphereData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(indices.data()), indices.size() * 3);
+    s_sphereData.indexBuffer->allocate(reinterpret_cast<const uint32_t*>(indices.data()), indices.size() * 3);
     s_sphereData.vertexArray->setIndexBuffer(s_sphereData.indexBuffer);
 }
 
@@ -84,7 +84,7 @@ void Renderer::draw(const std::shared_ptr<Shader>& shader, const std::shared_ptr
 {
     shader->bind();
     vertexArray->bind();
-    glDrawElements(GL_TRIANGLES, vertexArray->getIndexBuffer()->getCount(), GL_UNSIGNED_SHORT, 0);
+    glDrawElements(GL_TRIANGLES, vertexArray->getIndexBuffer()->getCount(), GL_UNSIGNED_INT, 0);
 }
 
 void Renderer::drawPlane(const glm::mat4& transform, const glm::vec4& color)
@@ -166,11 +166,11 @@ void Renderer::addMeshData(const UUID meshId, const MeshData& data)
     meshData.vertexBuffer = std::make_shared<VertexBuffer>();
     meshData.vertexBuffer->allocate(reinterpret_cast<const float*>(data.vertices.data()), data.vertices.size() * sizeof(MeshData::Vertex)/sizeof(float));
     meshData.vertexBuffer->setLayout(MeshData::layout);
-    meshData.vertexArray->addVertexBuffer(s_frameData.vertexBuffer);
+    meshData.vertexArray->addVertexBuffer(meshData.vertexBuffer);
 
     meshData.indexBuffer = std::make_shared<IndexBuffer>();
-    meshData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(data.indices.data()), data.indices.size() * 3);
-    meshData.vertexArray->setIndexBuffer(s_frameData.indexBuffer);
+    meshData.indexBuffer->allocate(reinterpret_cast<const uint32_t*>(data.indices.data()), data.indices.size() * 3);
+    meshData.vertexArray->setIndexBuffer(meshData.indexBuffer);
 
     s_meshData.emplace(meshId, meshData);   
 }
@@ -185,11 +185,11 @@ void Renderer::addBoxData(const UUID boxId, const BoxData& data)
     boxData.vertexBuffer = std::make_shared<VertexBuffer>();
     boxData.vertexBuffer->allocate(reinterpret_cast<const float*>(data.vertices.data()), data.vertices.size() * sizeof(BoxData::Vertex)/sizeof(float));
     boxData.vertexBuffer->setLayout(BoxData::layout);
-    boxData.vertexArray->addVertexBuffer(s_frameData.vertexBuffer);
+    boxData.vertexArray->addVertexBuffer(boxData.vertexBuffer);
 
     boxData.indexBuffer = std::make_shared<IndexBuffer>();
-    boxData.indexBuffer->allocate(reinterpret_cast<const uint16_t*>(BoxData::indices.data()), BoxData::indices.size() * 3);
-    boxData.vertexArray->setIndexBuffer(s_frameData.indexBuffer);
+    boxData.indexBuffer->allocate(reinterpret_cast<const uint32_t*>(BoxData::indices.data()), BoxData::indices.size() * 3);
+    boxData.vertexArray->setIndexBuffer(boxData.indexBuffer);
 
     s_boxData.emplace(boxId, boxData);
 }

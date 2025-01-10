@@ -33,6 +33,7 @@ void MeshLoader::addNode(const aiScene* source, const aiNode* node, glm::mat4 t_
 
     t_node_world = t_node_world*t_curr_world;
 
+    size_t indexStart = s_mesh->data.vertices.size();
     for (size_t i = 0; i < node->mNumMeshes; ++i) {
         const auto& meshSource = source->mMeshes[node->mMeshes[i]];
 
@@ -57,14 +58,14 @@ void MeshLoader::addNode(const aiScene* source, const aiNode* node, glm::mat4 t_
         }
 
         for (size_t j = 0; j < meshSource->mNumFaces; ++j) {
-            std::array<uint16_t, 3> indices;
+            std::array<uint32_t, 3> indices;
             auto& indexSource = meshSource->mFaces[j];
 
             if (indexSource.mNumIndices != 3)
                 continue;
 
             for (size_t k = 0; k < 3; ++k)
-                indices[k] = indexSource.mIndices[k];
+                indices[k] = indexStart + indexSource.mIndices[k];
 
             s_mesh->data.indices.emplace_back(indices);
         }

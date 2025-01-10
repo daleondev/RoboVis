@@ -87,13 +87,14 @@ private:
 static std::string functionToLocation(const std::string& func)
 {
 	std::smatch match;
-	if (std::regex_search(func, match, std::regex(R"((?:\b(\w+)\b::)?\b(\w+)\b(?=\s*\())")))
+	if (std::regex_search(func, match, std::regex(R"((?:\b(\w+)\b::)?\b(\w+)\b(?=\s*\())"))) {
 		if (match[1].matched) {
 			return match[1].str() + "::" + match[2].str();
 		}
 		else {
 			return match[2].str();
 		}
+	}
 
 	return "";
 }

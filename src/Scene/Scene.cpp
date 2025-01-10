@@ -26,7 +26,7 @@ struct EntitiyIds
 };
 
 template<typename... Components>
-static void registerOnConstruct(entt::registry& registry, auto callback) {
+static void setComponentsConstructCallback(entt::registry& registry, auto callback) {
     (..., registry.on_construct<Components>().template connect<[callback](entt::registry& registry, entt::entity handle) { 
         callback(registry, handle, registry.get<Components>(handle)); 
     }>());
@@ -60,18 +60,23 @@ void Scene::init()
     //                      Registry
     //------------------------------------------------------
 
-    registerOnConstruct<PlaneRendererComponent, FrameRendererComponent, SphereRendererComponent>(s_registry, [](entt::registry& registry, Entity entity, auto component) -> void {
-        entity.addComponent<TransformComponent>();
+    setComponentsConstructCallback<PlaneRendererComponent, FrameRendererComponent, SphereRendererComponent>(s_registry, [](entt::registry& registry, Entity entity, auto component) -> void {
         entity.addComponent<VisibilityComponent>();
+        auto& transform = entity.addComponent<TransformComponent>();   
         auto& triangulation = entity.addComponent<TriangulationComponent>();
+
         triangulation.data = component.createTriangulation();
+        triangulation.update(transform.get());
     });
 
-    s_registry.on_construct<MeshRendererComponent>().connect<[](entt::registry& registry, Entity entity) -> void {
-        entity.addComponent<TransformComponent>();
+    s_registry.on_construct<MeshRendererComponent>().connect<[](entt::registry& registry, Entity entity) -> void {       
         entity.addComponent<VisibilityComponent>();
-        entity.addComponent<TriangulationComponent>();
-        entity.addComponent<BoundingBoxComponent>();
+        auto& transform = entity.addComponent<TransformComponent>();
+        auto& triangulation = entity.addComponent<TriangulationComponent>();       
+        auto& boundingBox = entity.addComponent<BoundingBoxComponent>();
+
+        triangulation.update(transform.get());
+        boundingBox.update(triangulation.limits);
     }>();
 
     //------------------------------------------------------
@@ -141,41 +146,45 @@ void Scene::update(const Timestep dt)
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);   
 
-    // // draw planes
-    // {
-    //     auto group = s_registry.group<PlaneRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent>());
-    //     for (auto [entity, plane, transform, visibility] : group.each()) {
-    //         if (!visibility.visible)
-    //             continue;
+    // draw planes
+    {
+        auto group = s_registry.group<PlaneRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent, TriangulationComponent>());
+        for (auto [entity, plane, transform, visibility, triangulation] : group.each()) {
+            if (!visibility.visible)
+                continue;
 
-    //         if (plane.hasTexture())
-    //             Renderer::drawPlane(transform.get(), std::get<std::shared_ptr<Texture2D>>(plane.material));
-    //         else
-    //             Renderer::drawPlane(transform.get(), std::get<glm::vec4>(plane.material));
-    //     }
-    // }
+            triangulation.update(transform.get());
 
-    // // draw frames
-    // {
-    //     auto group = s_registry.group<FrameRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent>());
-    //     for (auto [entity, frame, transform, visibility] : group.each()) {
-    //         if (!visibility.visible)
-    //             continue;
+            if (plane.hasTexture())
+                Renderer::drawPlane(transform.get(), std::get<std::shared_ptr<Texture2D>>(plane.material));
+            else
+                Renderer::drawPlane(transform.get(), std::get<glm::vec4>(plane.material));
+        }
+    }
 
-    //         Renderer::drawFrame(transform.get());
-    //     }
-    // }
+    // draw frames
+    {
+        auto group = s_registry.group<FrameRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent, TriangulationComponent>());
+        for (auto [entity, frame, transform, visibility, triangulation] : group.each()) {
+            if (!visibility.visible)
+                continue;
 
-    // // draw spheres
-    // {
-    //     auto group = s_registry.group<SphereRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent>());
-    //     for (auto [entity, sphere, transform, visibility] : group.each()) {
-    //         if (!visibility.visible)
-    //             continue;
+            triangulation.update(transform.get());
+            Renderer::drawFrame(transform.get());
+        }
+    }
 
-    //         Renderer::drawSphere(transform.get(), sphere.color);
-    //     }
-    // }
+    // draw spheres
+    {
+        auto group = s_registry.group<SphereRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent, TriangulationComponent>());
+        for (auto [entity, sphere, transform, visibility, triangulation] : group.each()) {
+            if (!visibility.visible)
+                continue;
+
+            triangulation.update(transform.get());
+            Renderer::drawSphere(transform.get(), sphere.color);
+        }
+    }
 
     // draw meshes
     {
@@ -188,8 +197,8 @@ void Scene::update(const Timestep dt)
             boundingBox.update(triangulation.limits);
 
             Renderer::drawMesh(transform.get(), mesh.id);
-            Renderer::drawBox(transform.get(), mesh.id, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-            // LOG_TRACE << "Render Mesh";
+            if (boundingBox.visible)
+                Renderer::drawBox(transform.get(), mesh.id, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
         }
     }
     
@@ -212,105 +221,6 @@ void Scene::destroyEntity(const Entity entity)
     s_entities.erase(entity.getId());
     s_registry.destroy(entity);
 }
-
-// std::shared_ptr<Robot> Scene::createRobot(const std::string& name, const std::filesystem::path& sourceDir, const glm::mat4& initialTransformation)
-// {
-//     std::shared_ptr<Robot> robot = std::make_shared<Robot>();
-//     if (!robot->setup(sourceDir))
-//         return nullptr;
-
-//     robot->setTransformation(initialTransformation);
-//     addEntity(name, robot);
-//     return robot;
-// }
-
-// std::shared_ptr<Mesh> Scene::createMesh(const std::string& name, const aiScene* source, const glm::mat4& t_mesh_world, const glm::mat4& initialTransformation)
-// {
-//     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(source, t_mesh_world);
-//     mesh->setTransformation(initialTransformation);
-//     addEntity(name, mesh);
-//     return mesh;
-// }
-
-// std::shared_ptr<Frame> Scene::createFrame(const std::string& name, const glm::mat4& initialTransformation)
-// {
-//     std::shared_ptr<Frame> frame = std::make_shared<Frame>();
-//     frame->setTransformation(initialTransformation);
-//     addEntity(name, frame);
-//     return frame;
-// }
-
-// std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const std::shared_ptr<Texture2D>& texture, const glm::mat4& initialTransformation)
-// {
-//     std::shared_ptr<Plane> plane = std::make_shared<Plane>(texture);
-//     plane->setTransformation(initialTransformation);
-//     addEntity(name, plane);
-//     return plane;
-// }
-
-// std::shared_ptr<Plane> Scene::createPlane(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation)
-// {
-//     std::shared_ptr<Plane> plane = std::make_shared<Plane>(color);
-//     plane->setTransformation(initialTransformation);
-//     addEntity(name, plane);
-//     return plane;
-// }
-
-// std::shared_ptr<Sphere> Scene::createSphere(const std::string& name, const glm::vec4& color, const glm::mat4& initialTransformation)
-// {
-//     std::shared_ptr<Sphere> sphere = std::make_shared<Sphere>(color);
-//     sphere->setTransformation(initialTransformation);
-//     addEntity(name, sphere);
-//     return sphere;
-// }
-
-// void Scene::addEntity(const std::string& name, const std::shared_ptr<EntityOld>& entity) 
-// { 
-//     assert(s_entities.find(name) == s_entities.end() && "EntityOld already exists");
-//     s_entities.emplace(name, entity); 
-// }
-
-// std::shared_ptr<EntityOld> Scene::getEntity(const std::string& name)  
-// { 
-//     assert(s_entities.find(name) != s_entities.end() && "EntityOld doesnt exist");
-//     return s_entities[name];
-// }
-
-// void Scene::deleteEntity(const std::string& name) 
-// { 
-//     auto it = s_entities.find(name);
-//     assert(it != s_entities.end() && "EntityOld doesnt exist");
-//     s_entities.erase(it);
-// }
-
-// void Scene::render(const Timestep dt)
-// {   
-//     s_frameBuffer->bind();
-//     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
-//     CameraController::update(dt);
-
-//     for (const auto&[name, entity] : s_entities) {
-//         if (ImGuiLayer::isViewportFocused()) {
-//             if (Input::isKeyPressed(GLFW_KEY_LEFT))
-//                 entity->rotate(-500*dt, {0.0f, 1.0f, 0.0f});
-
-//             else if(Input::isKeyPressed(GLFW_KEY_RIGHT))
-//                 entity->rotate(500*dt, {0.0f, 1.0f, 0.0f});
-
-//             if (Input::isKeyPressed(GLFW_KEY_UP))
-//                 entity->rotate(-500*dt, {1.0f, 0.0f, 0.0f});
-
-//             else if(Input::isKeyPressed(GLFW_KEY_DOWN))
-//                 entity->rotate(500*dt, {1.0f, 0.0f, 0.0f});
-//         }
-
-//         if (auto robot = dynamic_cast<Robot*>(entity.get()); robot != nullptr)
-//             robot->update(dt);
-
-//         entity->draw(CameraController::getCamera());
-//     }   
-//     s_frameBuffer->release();
-// }
 
 bool Scene::onMouseLeave(MouseLeaveEvent& e)
 {   

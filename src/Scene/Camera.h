@@ -11,7 +11,7 @@ public:
     Camera();
     ~Camera();
 
-    void setProjection(const glm::mat4& projection);
+    void setProjection(const float hFov, const float m_zNear, const float m_zFar, const uint16_t width, const uint16_t height);
 
     void reset();
 
@@ -24,17 +24,25 @@ public:
     void rotate(const float angle, const glm::vec3& v_axis_cam);
     void rotate(const glm::mat3& r_cam);
     void transform(const glm::mat4& t_cam);
+    
+    std::tuple<glm::vec3, glm::vec3> screenToCam(const glm::vec2& p_mouse_screen) const;
+    std::tuple<glm::vec3, glm::vec3> screenToWorld(const glm::vec2& p_mouse_screen) const;  
+    std::tuple<glm::vec3, glm::vec3> ray(const glm::vec2& p_mouse_screen) const;
 
-    inline glm::mat4 getPosition() const { return m_pos; };
+    inline glm::mat4 getTransformation() const { return m_transform; };
     inline glm::mat4 getProjection() const { return m_projection; };
     inline glm::mat4 getView() const { return m_view; };
 
 private:
     void posToView();
 
-    glm::mat4 m_pos;
+    glm::mat4 m_transform;
     glm::mat4 m_projection;
     glm::mat4 m_view;
+
+    float m_hFov;
+    float m_zNear;
+    float m_zFar;
 };
 
 class CameraController 
@@ -52,10 +60,6 @@ public:
     static void stopDraggingRot();
     static void drag(const glm::vec2& p_mouse_screen);
     static void zoom(const float factor);
-
-    static std::tuple<glm::vec3, glm::vec3> screenToCam(const glm::vec2& p_mouse_screen);
-    static std::tuple<glm::vec3, glm::vec3> screenToWorld(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world);  
-    static std::tuple<glm::vec3, glm::vec3> cameraRay(const glm::vec2& p_mouse_screen, const glm::mat4& t_cam_world);
 
     inline static Camera& getCamera() { return s_camera; }
     inline static bool isDragging() { return s_draggingTrans || s_draggingRot; }

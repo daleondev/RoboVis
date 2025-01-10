@@ -145,7 +145,7 @@ public:
     IndexBuffer();
     ~IndexBuffer();
 
-    void allocate(const GLushort* indices, const size_t count);
+    void allocate(const GLuint* indices, const size_t count);
 
     void bind() const;
     void release() const;

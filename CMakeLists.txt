@@ -65,7 +65,7 @@ set(PCH ${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h)
 # set compile options
 set(OPTIONS 
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>) #-Wpedantic
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall>) #-Wpedantic -Wextra
 
 # ----------------------------------
 # configure executable
