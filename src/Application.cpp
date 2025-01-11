@@ -9,6 +9,7 @@
 #include "ImGui/ImGuiLayer.h"
 
 #include "Util/Log.h"
+#include "Util/RobotLoader.h"
 
 Application* Application::s_instance = nullptr;
 
@@ -47,10 +48,10 @@ int Application::run(int argc, char **argv)
 		return 1;
 	}
 
-    // if (!Scene::createRobot("robot", argv[1])) {
-    //     LOG_FATAL << "Failed to create the robot.";
-	// 	return 1;
-    // }
+    if (!RobotLoader::loadRobot(argv[1])) {
+        LOG_FATAL << "Failed to load the robot.";
+		return 1;
+    }
 
     while (m_running) {
         const float time = static_cast<float>(glfwGetTime());

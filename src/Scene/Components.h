@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Entity.h"
+
 #include "Renderer/RenderData.h"
 
 #include "Util/util.h"
@@ -12,7 +14,7 @@
 
 struct IdComponent
 {
-    UUID id;
+    const UUID id;
 
     IdComponent() : id{uuid()} {}
     IdComponent(const IdComponent&) = default;
@@ -89,12 +91,12 @@ struct BoundingBoxData
 struct BoundingBoxComponent
 {
     bool visible = false;
-    std::unique_ptr<BoundingBoxData> data;
+    std::shared_ptr<BoundingBoxData> data;
     glm::vec4 color;
 
-    BoundingBoxComponent() : data{std::make_unique<BoundingBoxData>()}, color(1.0f) {}
-    BoundingBoxComponent(const BoundingBoxComponent&) = default;
-    BoundingBoxComponent(const glm::vec4& color) : data{std::make_unique<BoundingBoxData>()}, color{color} {}
+    BoundingBoxComponent() : data{std::make_shared<BoundingBoxData>()}, color(1.0f) {}
+    BoundingBoxComponent(BoundingBoxComponent& other) = default;
+    BoundingBoxComponent(const glm::vec4& color) : data{std::make_shared<BoundingBoxData>()}, color{color} {}
 
     void update(const std::pair<glm::vec3, glm::vec3>& limits)
     {
@@ -145,11 +147,11 @@ struct TriangulationData
 
 struct TriangulationComponent
 {
-    std::unique_ptr<TriangulationData> data;
+    std::shared_ptr<TriangulationData> data;
     std::vector<glm::vec3> updatedVertices;
     std::pair<glm::vec3, glm::vec3> limits;
 
-    TriangulationComponent() : data{std::make_unique<TriangulationData>()} {}
+    TriangulationComponent() : data{std::make_shared<TriangulationData>()} {}
     TriangulationComponent(const TriangulationComponent&) = default;
 
     void update(const glm::mat4& transform)
@@ -218,9 +220,9 @@ struct PlaneRendererComponent
 
     inline bool hasTexture() const { return material.index() == 1; }
 
-    static std::unique_ptr<TriangulationData> createTriangulation()
+    static std::shared_ptr<TriangulationData> createTriangulation()
     {
-        auto triangulation = std::make_unique<TriangulationData>();
+        auto triangulation = std::make_shared<TriangulationData>();
 
         triangulation->vertices.resize(PlaneData::vertices.size());
         for (size_t i = 0; i < PlaneData::vertices.size(); ++i) {
@@ -247,9 +249,9 @@ struct FrameRendererComponent
     FrameRendererComponent() = default;
     FrameRendererComponent(const FrameRendererComponent&) = default;
 
-    static std::unique_ptr<TriangulationData> createTriangulation()
+    static std::shared_ptr<TriangulationData> createTriangulation()
     {
-        auto triangulation = std::make_unique<TriangulationData>();
+        auto triangulation = std::make_shared<TriangulationData>();
 
         triangulation->vertices.resize(FrameData::vertices.size());
         for (size_t i = 0; i < FrameData::vertices.size(); ++i) {
@@ -277,9 +279,9 @@ struct SphereRendererComponent
     SphereRendererComponent(const SphereRendererComponent&) = default;
     SphereRendererComponent(const glm::vec4& color) : color{color} {}
 
-    static std::unique_ptr<TriangulationData> createTriangulation()
+    static std::shared_ptr<TriangulationData> createTriangulation()
     {
-        auto triangulation = std::make_unique<TriangulationData>();
+        auto triangulation = std::make_shared<TriangulationData>();
 
         const auto [vertices, indices] = SphereData::generateSphere();
         triangulation->vertices.resize(vertices.size());
@@ -302,9 +304,69 @@ struct SphereRendererComponent
 
 struct MeshRendererComponent
 {
-    UUID id;
+    const UUID id;
 
     MeshRendererComponent(const UUID id) : id{id} {}
     MeshRendererComponent() = delete;
     MeshRendererComponent(const MeshRendererComponent&) = default;
+};
+
+//------------------------------------------------------
+//                      Robot
+//------------------------------------------------------
+
+struct JointComponent
+{
+    const std::string name;
+    const Entity parentLink;
+    const Entity childLink;
+    const glm::mat4 parentToChild;
+    const glm::vec3 rotationAxis;
+    const glm::vec2 limits;
+
+    float value;
+
+    JointComponent(const std::string& name, const Entity parent, const Entity child, const glm::mat4& parentToChild, const glm::vec3& rotationAxis, const glm::vec2& limits)
+        : name{name}, parentLink{parent}, childLink{child}, parentToChild{parentToChild}, rotationAxis{rotationAxis}, limits{limits} {}
+    JointComponent() = delete;
+    JointComponent(const JointComponent&) = default;
+
+    glm::mat4 forwardTransform()
+    {
+        if (!childLink)
+            return parentLink.getComponent<TransformComponent>().get();
+
+        value = std::clamp(value, limits[0], limits[1]);
+        const auto t_parent_world = parentLink.getComponent<TransformComponent>().get();
+        const auto t_child_world = glm::mat4(angleAxisF(value, rotationAxis)) * parentToChild * t_parent_world;
+        childLink.getComponent<TransformComponent>().set(t_child_world);
+
+        if (childLink.hasComponent<JointComponent>())
+            return childLink.getComponent<JointComponent>().forwardTransform();
+        else
+            return t_child_world;
+    }
+};
+
+struct RobotComponent
+{
+    const Entity baseLink;
+
+    bool drawFrames;
+    bool drawBoundingBoxes;
+    // std::optional<Trajectory> trajectory;
+
+    RobotComponent(const Entity baseLink) : baseLink{baseLink} {}
+    RobotComponent() = delete;
+    RobotComponent(const RobotComponent&) = default;
+
+    glm::mat4 forwardTransform(const glm::mat4& transform) const
+    {
+        baseLink.getComponent<TransformComponent>().set(transform);
+
+        if (baseLink.hasComponent<JointComponent>())
+            return baseLink.getComponent<JointComponent>().forwardTransform();
+        else
+            return glm::mat4(1.0f);
+    }
 };

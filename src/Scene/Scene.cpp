@@ -13,6 +13,7 @@
 
 #include "Util/geometry.h"
 #include "Util/MeshLoader.h"
+#include "Util/RobotLoader.h"
 
 std::shared_ptr<FrameBuffer> Scene::s_frameBuffer;
 entt::registry Scene::s_registry;
@@ -61,19 +62,19 @@ void Scene::init()
     //------------------------------------------------------
 
     setComponentsConstructCallback<PlaneRendererComponent, FrameRendererComponent, SphereRendererComponent>(s_registry, [](entt::registry& registry, Entity entity, auto component) -> void {
-        entity.addComponent<VisibilityComponent>();
-        auto& transform = entity.addComponent<TransformComponent>();   
-        auto& triangulation = entity.addComponent<TriangulationComponent>();
+        entity.addOrReplaceComponent<VisibilityComponent>();
+        auto& transform = entity.addOrReplaceComponent<TransformComponent>();   
+        auto& triangulation = entity.addOrReplaceComponent<TriangulationComponent>();
 
         triangulation.data = component.createTriangulation();
         triangulation.update(transform.get());
     });
 
     s_registry.on_construct<MeshRendererComponent>().connect<[](entt::registry& registry, Entity entity) -> void {       
-        entity.addComponent<VisibilityComponent>();
-        auto& transform = entity.addComponent<TransformComponent>();
-        auto& triangulation = entity.addComponent<TriangulationComponent>();       
-        auto& boundingBox = entity.addComponent<BoundingBoxComponent>();
+        entity.addOrReplaceComponent<VisibilityComponent>();
+        auto& transform = entity.addOrReplaceComponent<TransformComponent>();
+        auto& triangulation = entity.addOrReplaceComponent<TriangulationComponent>();       
+        auto& boundingBox = entity.addOrReplaceComponent<BoundingBoxComponent>();
 
         triangulation.update(transform.get());
         boundingBox.update(triangulation.limits);
@@ -146,6 +147,14 @@ void Scene::update(const Timestep dt)
     Renderer::clear({218.0f/256, 237.0f/256, 245.0f/256, 1.0f}); 
     CameraController::update(dt);   
 
+    // update robot
+    {
+        auto view = s_registry.view<RobotComponent, TransformComponent>();
+        for (auto [entity, robot, transform] : view.each()) {
+            robot.forwardTransform(transform.get());
+        }
+    }
+
     // draw planes
     {
         auto group = s_registry.group<PlaneRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent, TriangulationComponent>());
@@ -188,8 +197,8 @@ void Scene::update(const Timestep dt)
 
     // draw meshes
     {
-        auto group = s_registry.group<MeshRendererComponent>(entt::get_t<TransformComponent, VisibilityComponent, TriangulationComponent, BoundingBoxComponent>());
-        for (auto [entity, mesh, transform, visibility, triangulation, boundingBox] : group.each()) {
+        auto view = s_registry.view<MeshRendererComponent, TransformComponent, VisibilityComponent, TriangulationComponent, BoundingBoxComponent>();
+        for (auto [entity, mesh, transform, visibility, triangulation, boundingBox] : view.each()) {
             if (!visibility.visible)
                 continue;
 
@@ -303,7 +312,7 @@ bool Scene::onMouseDropped(MouseDroppedEvent& e)
         std::filesystem::path path = e.getPath(0);
         // folder -> robot
         if (ImGuiLayer::isViewportHovered() && std::filesystem::is_directory(path)) {
-            // createRobot("test", path);
+            RobotLoader::loadRobot(path);
         }
         // assimp extension -> mesh
         else if (ImGuiLayer::isViewportHovered() && !std::filesystem::is_directory(path) && aiIsExtensionSupported(path.extension().c_str()) == AI_TRUE) {

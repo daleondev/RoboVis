@@ -44,5 +44,6 @@ private:
 
     friend class Entity;
     friend class CameraController;
+    friend class RobotLoader;
 
 };

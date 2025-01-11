@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Scene.h"
-#include "Components.h"
 
 class Entity
 {
@@ -15,8 +14,13 @@ public:
     T& addComponent(Args&&... args)
     {
         assert(!hasComponent<T>() && "Entity already has component!");
-        T& component = Scene::s_registry.emplace<T>(m_handle, std::forward<Args>(args)...);
-        return component;
+        return Scene::s_registry.emplace<T>(m_handle, std::forward<Args>(args)...);
+    }
+
+    template<typename T, typename... Args>
+    T& addOrReplaceComponent(Args&&... args)
+    {
+        return Scene::s_registry.emplace_or_replace<T>(m_handle, std::forward<Args>(args)...);
     }
 
     template<typename T>
@@ -27,13 +31,21 @@ public:
     }
 
     template<typename T>
-    bool hasComponent() const { return Scene::s_registry.all_of<T>(m_handle); }
+    inline bool hasComponent() const { return Scene::s_registry.all_of<T>(m_handle); }
 
-    inline UUID getId() const { return getComponent<IdComponent>().id; }
-    inline std::string getTag() const { return getComponent<TagComponent>().tag; }
+    UUID getId() const;
+    std::string getTag() const;
 
+    inline operator bool() const { return m_handle != entt::null; }
     inline operator entt::entity() const { return m_handle; }
     inline operator uint32_t() const { return static_cast<uint32_t>(m_handle); }
+
+    inline bool operator==(const Entity other) const { return m_handle == other.m_handle; }
+    inline bool operator!=(const Entity other) const { return m_handle != other.m_handle; }
+    inline bool operator<(const Entity other) const { return m_handle < other.m_handle; }
+    inline bool operator>(const Entity other) const { return m_handle > other.m_handle; }
+    inline bool operator<=(const Entity other) const { return m_handle <= other.m_handle; }
+    inline bool operator>=(const Entity other) const { return m_handle >= other.m_handle; }
 
 private:
     entt::entity m_handle;
