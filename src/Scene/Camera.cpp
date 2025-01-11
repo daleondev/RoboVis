@@ -228,13 +228,12 @@ void CameraController::startDraggingTrans(const glm::vec2& p_mouse_screen)
         return;
 
     s_draggingTrans = true;
-    s_screenPosPrev = p_mouse_screen;
-    s_camPosPrev = s_camera.getView();
-    s_dragPos = {};
+    startDragging(p_mouse_screen);
 }
 
 void CameraController::stopDraggingTrans()
 {
+    s_dragPos = glm::vec3(0.0f);
     s_draggingTrans = false;
 }
 
@@ -243,6 +242,12 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
     if (s_draggingTrans)
         return;
 
+    s_draggingRot = true;
+    startDragging(p_mouse_screen);
+}
+
+void CameraController::startDragging(const glm::vec2& p_mouse_screen)
+{
     const auto& t_cam_world = s_camera.getTransformation();
     const auto p_cam_world = getMat4Translation(t_cam_world);
     const auto ray_world = s_camera.ray(p_mouse_screen);
@@ -251,9 +256,9 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
     bool hit = false;
     glm::vec3 p_hitTmp_world, p_hit_world;
     
-    auto view = Scene::s_registry.view<TriangulationComponent, TransformComponent, VisibilityComponent>();
-    for (const auto [e, triangulation, transform, visibility] : view.each()) {
-        if (!visibility.visible)
+    auto view = Scene::s_registry.view<TriangulationComponent, TransformComponent, PropertiesComponent>();
+    for (const auto [e, triangulation, transform, properties] : view.each()) {
+        if (!properties.visible || !properties.clickable)
             continue;
 
         Entity entity{e};
@@ -265,6 +270,7 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
 
         float dist;
         if (triangulation.rayIntersection(ray_world, p_hitTmp_world, dist)) {
+            LOG_TRACE << entity.getTag();
             if (!hit || dist < minDist) {
                 hit = true;
                 minDist = dist;
@@ -273,7 +279,6 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
         }
     }
 
-    s_draggingRot = true;
     s_screenPosPrev = p_mouse_screen;
     s_camPosPrev = t_cam_world;
     s_dragPos = hit && !glm::any(glm::isnan(p_hit_world)) ? p_hit_world : glm::vec3(0.0f);
@@ -281,7 +286,7 @@ void CameraController::startDraggingRot(const glm::vec2& p_mouse_screen)
 
 void CameraController::stopDraggingRot()
 {
-    s_dragPos = {};
+    s_dragPos = glm::vec3(0.0f);
     s_draggingRot = false;
 }
 
@@ -295,8 +300,8 @@ void CameraController::drag(const glm::vec2& p_mouse_screen)
         return;
     }
 
-    if (s_draggingTrans) {
-        const glm::vec2 v = s_dragFactor*(p_mouse_screen - s_screenPosPrev);
+    if (s_draggingTrans) {    
+        const glm::vec2 v = s_dragFactor*glm::length(s_dragPos-getMat4Translation(t_cam_world))*(p_mouse_screen - s_screenPosPrev);
         s_camera.translate(glm::vec3(v.x, v.y, 0.0));
         s_camPosPrev = s_camera.getTransformation();
         s_screenPosPrev = p_mouse_screen;

@@ -5,10 +5,10 @@
 
 UUID Entity::getId() const 
 { 
-    return getComponent<IdComponent>().id; 
+    return getComponent<IdComponent>(); 
 }
 
 std::string Entity::getTag() const 
 { 
-    return getComponent<TagComponent>().tag; 
+    return getComponent<TagComponent>(); 
 }

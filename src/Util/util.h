@@ -67,3 +67,11 @@ static uint32_t vecToRGBA(const glm::vec4& color)
 
 	return (a << 24) | (b << 16) | (g << 8) | r;
 }
+
+constexpr bool const_strcmp(const char* a, const char* b) {
+    for (;*a || *b;){
+        if (*a++!=*b++)
+            return false;
+    }
+    return true;
+}

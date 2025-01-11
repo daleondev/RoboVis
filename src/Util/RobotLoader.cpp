@@ -10,18 +10,25 @@
 
 #include "Util/Log.h"
 
+void RobotLoader::init()
+{
+    Scene::s_registry.on_destroy<RobotComponent>().connect<[](entt::registry& registry, Entity entity) -> void {   
+        entity.getComponent<RobotComponent>().destroy();
+    }>();
+}
+
 Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
 {
     if (!std::filesystem::exists(sourceDir)) {
         LOG_ERROR << "Robot model directory invalid.";
-		return static_cast<entt::entity>(entt::null);
+		return EntityNull;
     }
 
     const auto urdfDir = sourceDir / "urdf";
     auto meshDir = sourceDir / "meshes";
     if (!std::filesystem::exists(urdfDir) || !std::filesystem::exists(meshDir)) {
         LOG_ERROR << "Robot model directory has invalid folder structure.";
-		return static_cast<entt::entity>(entt::null);
+		return EntityNull;
     }
 
     std::string urdfContent;
@@ -33,7 +40,7 @@ Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
     }
     if (urdfContent.empty()) {
         LOG_ERROR << "Robot model directory does not contain valid urdf-data.";
-		return static_cast<entt::entity>(entt::null);
+		return EntityNull;
     }
 
     // parse urdf file
@@ -44,14 +51,14 @@ Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
     const XmlNode urdfRoot = urdfParser.parse();
     if (urdfRoot.children.size() != 1 || urdfRoot.children.front().tag != "robot") {
         LOG_ERROR << "Invalid urdf format.";
-		return static_cast<entt::entity>(entt::null);
+		return EntityNull;
     }
 
     // robot
     const XmlNode robotNode = urdfRoot.children.front();
     if (auto it = robotNode.attributes.find("name"); it == robotNode.attributes.cend() || it->second.index() != 2) {
         LOG_ERROR << "Invalid robot tag.";
-		return static_cast<entt::entity>(entt::null);
+		return EntityNull;
     }
 
     const auto name = std::get<std::string>(robotNode.attributes.at("name"));
@@ -70,7 +77,7 @@ Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
                     for (auto [name, entity] : s_links) {
                         Scene::destroyEntity(entity);
                     }
-                    return static_cast<entt::entity>(entt::null);
+                    return EntityNull;
                 }
 
                 // return true;
@@ -82,7 +89,7 @@ Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
                     for (auto [name, entity] : s_links) {
                         Scene::destroyEntity(entity);
                     }
-                    return static_cast<entt::entity>(entt::null);
+                    return EntityNull;
                 }
                 
             }
@@ -104,16 +111,21 @@ Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
         for (auto [name, entity] : s_links) {
             Scene::destroyEntity(entity);
         }
-        return static_cast<entt::entity>(entt::null);
+        return EntityNull;
     }
 
     // create robot entity
     Entity robot = Scene::createEntity(name);
-    robot.addComponent<VisibilityComponent>();
+    robot.addComponent<PropertiesComponent>();
     robot.addComponent<TransformComponent>();
+    robot.addComponent<JointComponent>("world_joint", JointComponent::Type::Fixed, robot, baseLink->second, glm::mat4(1.0f), glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec2{0.0f, 0.0f});
     auto& robotComponent = robot.addComponent<RobotComponent>(baseLink->second);
-    robotComponent.drawFrames = true;
-    robotComponent.drawBoundingBoxes = false;
+    robotComponent.visible.val() = true; 
+    robotComponent.visible();
+    robotComponent.drawFrames.val() = true; 
+    robotComponent.drawFrames();
+    robotComponent.drawBoundingBoxes.val() = false; 
+    robotComponent.drawBoundingBoxes();
 
     return robot;
 }
@@ -154,7 +166,7 @@ bool RobotLoader::setupLink(const std::string& name, const std::filesystem::path
         auto it = originNode->attributes.find("xyz");
         glm::vec3 p_mesh_world(0.0f);
         if (it != originNode->attributes.cend() && it->second.index() == 2)
-            p_mesh_world = 1000.0f*strToVec3(std::get<std::string>(it->second));
+            p_mesh_world = strToVec3(std::get<std::string>(it->second));
         else
             LOG_WARN << "No xyz specified: " << name;
 
@@ -209,34 +221,57 @@ bool RobotLoader::setupLink(const std::string& name, const std::filesystem::path
 
     // create link entity
     LOG_INFO << "creating link: " << name;
-    auto link = Scene::createEntity(name);
+    auto link = Scene::createEntity(name, false);
     link.addComponent<MeshRendererComponent>(mesh->id);
-    link.addComponent<FrameRendererComponent>();
+    auto& frame = link.addComponent<FrameRendererComponent>();
+    frame.internalTransform = glm::transpose(glm::scale(glm::mat4(1.0f), {0.4, 0.4, 0.4}));
+
+    // link properties
+    auto& properties = link.getComponent<PropertiesComponent>();
+    properties.copyable = false;
+    properties.removable = false;
+    properties.editable = false;
 
     // triangulation
     auto& triangulation = link.getComponent<TriangulationComponent>();
     for (auto& vertex : mesh->data.vertices)
         triangulation.data->vertices.emplace_back(vertex.position);
     triangulation.data->indices = mesh->data.indices;
+    triangulation.update(glm::mat4(1.0f));
 
     // bounding box
     auto& boundingBox = link.getComponent<BoundingBoxComponent>();
-    triangulation.update(glm::mat4(1.0f));
     boundingBox.update(triangulation.limits);
 
     // render data
     Renderer::addMeshData(mesh->id, mesh->data);
     Renderer::addBoxData(mesh->id, BoxData{boundingBox.data->vertices});
 
+    // set transform changed callback
+    auto& trans = link.getComponent<TransformComponent>();
+    trans.setChangedCallback([&triangulation, &boundingBox](const glm::mat4& transform) {
+        triangulation.update(transform);
+        boundingBox.update(triangulation.limits);
+    });
+    trans.detectChange();
+
     s_links.emplace(name, link);
     return true;
 }
 
-bool RobotLoader::setupJoint(const std::string& name, const XmlNode& linkNode)
+bool RobotLoader::setupJoint(const std::string& name, const XmlNode& jointNode)
 {
+    JointComponent::Type jointType;
+    auto it = jointNode.attributes.find("type");
+    if (it == jointNode.attributes.cend() || it->second.index() != 2) {
+        LOG_ERROR << "No joint type specified: " << name;
+        return false;
+    }
+    jointType = JointComponent::strToType(std::get<std::string>(it->second).c_str());
+
     // extract nodes with transformation data, parent, child and limit
     std::optional<XmlNode> originNode, parentNode, childNode, axisNode, limitNode;
-    for (const auto& child : linkNode.children) {
+    for (const auto& child : jointNode.children) {
         if (child.tag == "origin")
             originNode = child;
         else if (child.tag == "parent")
@@ -257,10 +292,10 @@ bool RobotLoader::setupJoint(const std::string& name, const XmlNode& linkNode)
     }
     
     // get translation
-    auto it = originNode->attributes.find("xyz");
+    it = originNode->attributes.find("xyz");
     glm::vec3 p_child_parent(0.0f);
     if (it != originNode->attributes.cend() && it->second.index() == 2)
-        p_child_parent = 1000.0f*strToVec3(std::get<std::string>(it->second));
+        p_child_parent = strToVec3(std::get<std::string>(it->second));
     else
         LOG_WARN << "No xyz specified: " << name;
 
@@ -283,7 +318,7 @@ bool RobotLoader::setupJoint(const std::string& name, const XmlNode& linkNode)
         return false;
     }
 
-    entt::entity e = static_cast<entt::entity>(entt::null);
+    entt::entity e = EntityNull;
     it = parentNode->attributes.find("link");
     if (it != parentNode->attributes.cend() && it->second.index() == 2) {
         const auto parentName = std::get<std::string>(it->second);
@@ -304,7 +339,7 @@ bool RobotLoader::setupJoint(const std::string& name, const XmlNode& linkNode)
     }
 
     it = childNode->attributes.find("link");
-    e = static_cast<entt::entity>(entt::null);
+    e = EntityNull;
     if (it != childNode->attributes.cend() && it->second.index() == 2) {
         const auto childName = std::get<std::string>(it->second);
         if (const auto p = s_links.find(childName); p != s_links.end())
@@ -353,10 +388,42 @@ bool RobotLoader::setupJoint(const std::string& name, const XmlNode& linkNode)
     else
         LOG_WARN << "No limits specified: " << name;
 
-    // create joint entity
-    LOG_INFO << "creating joint: " << name << ", parent = " << parent.getComponent<TagComponent>().tag;
-    auto& joint = parent.addComponent<JointComponent>(name, parent, child, t_child_parent, axis, limits);
-    joint.value = (limits[0]+limits[1])/2.0f;
+    // create joint component
+    LOG_INFO << "creating joint: " << name << ", parent = " << parent.getTag();
+    parent.addComponent<JointComponent>(name, jointType, parent, child, t_child_parent, axis, limits);
 
     return true;
+}
+
+std::optional<Trajectory> RobotLoader::loadTrajectory(const Entity entity, const std::filesystem::path& file)
+{
+    std::ifstream in(file);
+    if (!in) {
+        LOG_ERROR << "Failed to open trajectory file: " << file;
+        return {};
+    }
+
+    auto& robot = entity.getComponent<RobotComponent>();
+    auto& firstJoint = robot.baseLink.getComponent<JointComponent>();
+    size_t numJoints = 0;
+    firstJoint.recurse([&numJoints](Entity entity) -> void {
+        if (entity.hasComponent<JointComponent>())
+            ++numJoints;
+    }, true);
+    LOG_TRACE << "Num Joints: " << numJoints;
+
+    Trajectory traj;
+    std::string line;
+    while (std::getline(in, line)) {
+        const auto parts = splitString(line, ";, ");
+        std::vector<float> jointValues(numJoints);
+        for (size_t i = 0; i < numJoints; ++i) {
+            jointValues[i] = std::stof(parts[i]);
+        }
+        traj.jointValues.push_back(jointValues);
+        traj.times.push_back(std::stof(parts[numJoints]));
+    }
+
+    LOG_INFO << "Successfully loaded trajectory file: " << file;
+    return traj;
 }

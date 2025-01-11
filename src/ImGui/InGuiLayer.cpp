@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "ImGuiLayer.h"
+#include "Panels/ScenePanel.h"
 
 #include "Scene/Scene.h"
 #include "Scene/Camera.h"
@@ -66,6 +67,7 @@ void ImGuiLayer::render(const Timestep dt)
     dockSpace([](const ImGuiID dockspaceId) {
 		viewport(dockspaceId);
 		robotControls(dockspaceId);
+		ScenePanel::render(dockspaceId);
 	});
 
 	ImGuiIO& io = ImGui::GetIO();

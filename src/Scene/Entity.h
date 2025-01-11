@@ -23,6 +23,12 @@ public:
         return Scene::s_registry.emplace_or_replace<T>(m_handle, std::forward<Args>(args)...);
     }
 
+    template<typename T, typename... Args>
+    T& addComponentIfNotExists(Args&&... args)
+    {
+        return hasComponent<T>() ? getComponent<T>() : Scene::s_registry.emplace_or_replace<T>(m_handle, std::forward<Args>(args)...);
+    }
+
     template<typename T>
     T& getComponent() const
     {
@@ -32,6 +38,13 @@ public:
 
     template<typename T>
     inline bool hasComponent() const { return Scene::s_registry.all_of<T>(m_handle); }
+
+    template<typename T>
+    void RemoveComponent()
+    {
+        assert(hasComponent<T>() && "Entity does not have component!");
+        Scene::s_registry.remove<T>(m_handle);
+    }
 
     UUID getId() const;
     std::string getTag() const;
@@ -51,3 +64,5 @@ private:
     entt::entity m_handle;
 
 };
+
+inline static const Entity EntityNull{static_cast<entt::entity>(entt::null)};

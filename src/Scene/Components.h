@@ -6,7 +6,7 @@
 
 #include "Util/util.h"
 #include "Util/geometry.h"
-#include "Util/Log.h"
+#include "Util/EdgeDetector.h"
 
 //------------------------------------------------------
 //                  Identification
@@ -18,6 +18,8 @@ struct IdComponent
 
     IdComponent() : id{uuid()} {}
     IdComponent(const IdComponent&) = default;
+
+    operator UUID() const { return id; }
 };
 
 struct TagComponent
@@ -27,6 +29,8 @@ struct TagComponent
     TagComponent() = default;
     TagComponent(const TagComponent&) = default;
     TagComponent(const std::string& tag) : tag{tag} {}
+
+    operator std::string() const { return tag; }
 };
 
 //------------------------------------------------------
@@ -64,18 +68,40 @@ struct TransformComponent
         setMat4Rotation(transform, eulerZYX(rotation));
         return glm::transpose(glm::scale(glm::transpose(transform), scale));
     }
+    operator glm::mat4() const { return get(); }
+
+    inline void setChangedCallback(const std::function<void(const glm::mat4&)>& callback) { changedCallback = callback; }
+    void detectChange() 
+    { 
+        (glm::vec3&)translationListener = translation;
+        (glm::vec3&)rotationListener = rotation;
+        (glm::vec3&)scaleListener = scale;
+        if (changedCallback && (translationListener().edge() || rotationListener().edge() || scaleListener().edge())) 
+            (*changedCallback)(get()); 
+    }
+
+private:
+    EdgeDetector<glm::vec3> translationListener;
+    EdgeDetector<glm::vec3> rotationListener;
+    EdgeDetector<glm::vec3> scaleListener;
+    std::optional<std::function<void(const glm::mat4&)>> changedCallback;
+
 };
 
 //------------------------------------------------------
-//                      Visibility
+//                      Properties
 //------------------------------------------------------
 
-struct VisibilityComponent
+struct PropertiesComponent
 {
     bool visible;
-
-    VisibilityComponent() : visible{true} {}
-    VisibilityComponent(const VisibilityComponent&) = default;
+    bool editable;
+    bool removable;
+    bool copyable;
+    bool clickable;
+    
+    PropertiesComponent() : visible{true}, removable{true}, editable{true}, copyable{true}, clickable{true} {}
+    PropertiesComponent(const PropertiesComponent&) = default;
 };
 
 //------------------------------------------------------
@@ -164,14 +190,13 @@ struct TriangulationComponent
             updatedVertices.resize(data->vertices.size());
             
         for (size_t i = 0; i < updatedVertices.size(); ++i) {
-            auto& vertex = updatedVertices[i];   
-            vertex = glm::vec4(data->vertices[i], 1.0f) * transform;
-            lower.x = std::min(lower.x, vertex.x);
-            lower.y = std::min(lower.y, vertex.y);
-            lower.z = std::min(lower.z, vertex.z);
-            upper.x = std::max(upper.x, vertex.x);
-            upper.y = std::max(upper.y, vertex.y);
-            upper.z = std::max(upper.z, vertex.z);
+            updatedVertices[i] = glm::vec4(data->vertices[i], 1.0f) * transform;
+            lower.x = std::min(lower.x, updatedVertices[i].x);
+            lower.y = std::min(lower.y, updatedVertices[i].y);
+            lower.z = std::min(lower.z, updatedVertices[i].z);
+            upper.x = std::max(upper.x, updatedVertices[i].x);
+            upper.y = std::max(upper.y, updatedVertices[i].y);
+            upper.z = std::max(upper.z, updatedVertices[i].z);      
         }
     }
 
@@ -243,8 +268,9 @@ struct PlaneRendererComponent
 //------------------------------------------------------
 
 struct FrameRendererComponent
-{
-    bool placeholder;
+{   
+    std::optional<glm::mat4> internalTransform;
+    bool internalVisible;
 
     FrameRendererComponent() = default;
     FrameRendererComponent(const FrameRendererComponent&) = default;
@@ -317,7 +343,15 @@ struct MeshRendererComponent
 
 struct JointComponent
 {
+    enum class Type
+    {
+        Invalid,
+        Fixed,
+        Revolute
+    };
+
     const std::string name;
+    const Type type;
     const Entity parentLink;
     const Entity childLink;
     const glm::mat4 parentToChild;
@@ -326,16 +360,13 @@ struct JointComponent
 
     float value;
 
-    JointComponent(const std::string& name, const Entity parent, const Entity child, const glm::mat4& parentToChild, const glm::vec3& rotationAxis, const glm::vec2& limits)
-        : name{name}, parentLink{parent}, childLink{child}, parentToChild{parentToChild}, rotationAxis{rotationAxis}, limits{limits} {}
+    JointComponent(const std::string& name, const Type type, const Entity parent, const Entity child, const glm::mat4& parentToChild, const glm::vec3& rotationAxis, const glm::vec2& limits)
+        : name{name}, type{type}, parentLink{parent}, childLink{child}, parentToChild{parentToChild}, rotationAxis{rotationAxis}, limits{limits}, value{(limits[0]+limits[1])/2.0f} {}
     JointComponent() = delete;
     JointComponent(const JointComponent&) = default;
 
     glm::mat4 forwardTransform()
     {
-        if (!childLink)
-            return parentLink.getComponent<TransformComponent>().get();
-
         value = std::clamp(value, limits[0], limits[1]);
         const auto t_parent_world = parentLink.getComponent<TransformComponent>().get();
         const auto t_child_world = glm::mat4(angleAxisF(value, rotationAxis)) * parentToChild * t_parent_world;
@@ -346,27 +377,104 @@ struct JointComponent
         else
             return t_child_world;
     }
+
+    void destroy()
+    {
+        if (childLink.hasComponent<JointComponent>())
+            childLink.getComponent<JointComponent>().destroy();
+        Scene::destroyEntity(childLink);
+    }
+
+    void recurse(const std::function<void(Entity)>& func, const bool execForParent = false)
+    {
+        if (childLink.hasComponent<JointComponent>())
+            childLink.getComponent<JointComponent>().recurse(func);
+        func(childLink);
+        if (execForParent)
+            func(parentLink);
+    }
+
+    static constexpr const char* typeToStr(const Type type)
+    {
+        switch (type) {
+            case Type::Fixed: return "fixed";
+            case Type::Revolute: return "revolute";
+            default: return "invalid";
+        }
+    }
+
+    static constexpr Type strToType(const char* str)
+    {
+        if (const_strcmp(str, "fixed"))
+            return Type::Fixed;
+        else if (const_strcmp(str, "revolute"))
+            return Type::Revolute;
+        return Type::Invalid;
+    }
+};
+
+struct Trajectory
+{
+    bool active = false;
+    float currentTime = 0.0f;
+    size_t currentIndex = 0;
+    std::vector<std::vector<float>> jointValues;
+    std::vector<float> times;
 };
 
 struct RobotComponent
 {
     const Entity baseLink;
 
-    bool drawFrames;
-    bool drawBoundingBoxes;
-    // std::optional<Trajectory> trajectory;
+    EdgeDetector<bool> visible;
+    EdgeDetector<bool> clickable;
+    EdgeDetector<bool> drawFrames;
+    EdgeDetector<bool> drawBoundingBoxes;
+    std::optional<Trajectory> trajectory;
 
-    RobotComponent(const Entity baseLink) : baseLink{baseLink} {}
+    RobotComponent(const Entity baseLink) : baseLink{baseLink}, visible{true}, clickable{true}, drawFrames{false}, drawBoundingBoxes{false} {}
     RobotComponent() = delete;
     RobotComponent(const RobotComponent&) = default;
 
-    glm::mat4 forwardTransform(const glm::mat4& transform) const
+    void update(Entity entity)
     {
-        baseLink.getComponent<TransformComponent>().set(transform);
+        if (entity.hasComponent<JointComponent>()) {
+            auto& joint = entity.getComponent<JointComponent>();
+            joint.forwardTransform();
 
-        if (baseLink.hasComponent<JointComponent>())
-            return baseLink.getComponent<JointComponent>().forwardTransform();
-        else
-            return glm::mat4(1.0f);
+            auto& properties = entity.getComponent<PropertiesComponent>();
+            if ((bool&)visible = properties.visible; visible().edge()) {
+                joint.recurse([this](Entity entity) -> void {
+                    if (entity.hasComponent<PropertiesComponent>())
+                        entity.getComponent<PropertiesComponent>().visible = visible;
+                }, true);
+            }
+            if ((bool&)clickable = properties.clickable; clickable().edge()) {
+                joint.recurse([this](Entity entity) -> void {
+                    if (entity.hasComponent<PropertiesComponent>())
+                        entity.getComponent<PropertiesComponent>().clickable = clickable;
+                }, true);
+            }
+
+            if (drawFrames().edge()) {
+                joint.recurse([this](Entity entity) -> void {
+                    if (entity.hasComponent<FrameRendererComponent>())
+                        entity.getComponent<FrameRendererComponent>().internalVisible = drawFrames;
+                }, true);
+            }
+            if (drawBoundingBoxes().edge()) {
+                joint.recurse([this](Entity entity) -> void {
+                    if (entity.hasComponent<BoundingBoxComponent>())
+                        entity.getComponent<BoundingBoxComponent>().visible = drawBoundingBoxes;
+                }, true);
+            }
+        }
+    }
+
+    void destroy()
+    {
+        if (baseLink.hasComponent<JointComponent>()) 
+            baseLink.getComponent<JointComponent>().destroy();
+        Scene::destroyEntity(baseLink);
     }
 };

@@ -17,6 +17,7 @@ public:
 
     static glm::vec2 screenToViewport(const glm::vec2& screenPos);
     inline static std::pair<uint16_t, uint16_t> getViewportSize() { return s_viewportSize; }
+    inline static glm::vec2 getViewportPos() { return s_viewportPos; }
     inline static bool isViewportHovered() { return s_viewportHovered; }
     inline static bool isViewportFocused() { return s_viewportFocused; }
 

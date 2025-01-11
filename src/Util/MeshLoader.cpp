@@ -29,7 +29,7 @@ std::shared_ptr<Mesh> MeshLoader::loadMesh(const std::filesystem::path& filepath
 void MeshLoader::addNode(const aiScene* source, const aiNode* node, glm::mat4 t_node_world, const glm::mat4& t_mesh_world)
 {
     glm::mat4 t_curr_world = convertMat4<aiMatrix4x4, glm::mat4>(node->mTransformation);
-    setMat4Translation(t_curr_world, 1000.0f*getMat4Translation(t_curr_world));
+    setMat4Translation(t_curr_world, getMat4Translation(t_curr_world));
 
     t_node_world = t_node_world*t_curr_world;
 
@@ -49,9 +49,9 @@ void MeshLoader::addNode(const aiScene* source, const aiNode* node, glm::mat4 t_
             auto& vertSource = meshSource->mVertices[j];
 
             glm::vec3 p_vertex_world;
-            p_vertex_world.x = 1000.0f*vertSource.x;
-            p_vertex_world.y = 1000.0f*vertSource.y;
-            p_vertex_world.z = 1000.0f*vertSource.z;  
+            p_vertex_world.x = vertSource.x;
+            p_vertex_world.y = vertSource.y;
+            p_vertex_world.z = vertSource.z;  
             p_vertex_world = glm::vec4(p_vertex_world, 1.0f) * t_node_world * t_mesh_world;
 
             s_mesh->data.vertices.emplace_back(p_vertex_world, color);

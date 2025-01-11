@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Entities/Entity.h"
-
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
 #include "Events/WindowEvent.h"
@@ -17,10 +15,13 @@ class Entity;
 class Scene
 {
 public:
+    typedef std::map<UUID, Entity>::iterator SceneEntityIterator;
+
     static void init();
 
-    static Entity createEntity(const std::string& tag);
+    static Entity createEntity(const std::string& tag, const bool addToMap = true);
     static void destroyEntity(const Entity entity);
+    static SceneEntityIterator destroyEntity(const SceneEntityIterator it);
 
     static Entity loadMesh();
 
@@ -40,10 +41,11 @@ private:
     static std::shared_ptr<FrameBuffer> s_frameBuffer;
 
     static entt::registry s_registry;
-    static std::unordered_map<UUID, Entity> s_entities;
+    static std::map<UUID, Entity> s_entities;
 
     friend class Entity;
     friend class CameraController;
     friend class RobotLoader;
+    friend class ScenePanel;
 
 };
