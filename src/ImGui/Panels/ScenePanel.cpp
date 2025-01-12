@@ -3,6 +3,7 @@
 #include "ScenePanel.h"
 
 #include "Scene/Components.h"
+#include "Scene/ComponentUtils/RobotUtils.h"
 
 Entity ScenePanel::s_selected = EntityNull;
 EdgeDetector<bool> ScenePanel::s_trajSlider;
@@ -258,10 +259,10 @@ void ScenePanel::components(Entity entity)
 
     // joint
     drawComponent<JointComponent>("Joint", entity, [&entity](auto& joint) {
-        ImGui::Text("Type: %s", JointComponent::typeToStr(joint.type));
-        if (joint.type == JointComponent::Type::Revolute)
+        ImGui::Text("Type: %s", jointTypeToStr(joint.type));
+        if (joint.type == JointType::Revolute)
             ImGui::SliderAngle("Joint value", &joint.value, rad2deg(joint.limits[0]), rad2deg(joint.limits[1]));
-    }, properties.editable && entity.hasComponent<JointComponent>() && (entity.getComponent<JointComponent>().type != JointComponent::Type::Fixed));
+    }, properties.editable && entity.hasComponent<JointComponent>() && (entity.getComponent<JointComponent>().type != JointType::Fixed));
 
     // triangulation
     drawComponent<TriangulationComponent>("Triangulation", entity, [&properties](auto& triangulation) {

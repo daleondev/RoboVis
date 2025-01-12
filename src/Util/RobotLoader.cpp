@@ -5,6 +5,8 @@
 
 #include "Scene/Scene.h"
 #include "Scene/Components.h"
+#include "Scene/ComponentUtils/TriangulationUtils.h"
+#include "Scene/ComponentUtils/RobotUtils.h"
 
 #include "Renderer/Renderer.h"
 
@@ -13,7 +15,7 @@
 void RobotLoader::init()
 {
     Scene::s_registry.on_destroy<RobotComponent>().connect<[](entt::registry& registry, Entity entity) -> void {   
-        entity.getComponent<RobotComponent>().destroy();
+        destroyRobot(entity.getComponent<RobotComponent>());
     }>();
 }
 
@@ -118,7 +120,7 @@ Entity RobotLoader::loadRobot(const std::filesystem::path& sourceDir)
     Entity robot = Scene::createEntity(name);
     robot.addComponent<PropertiesComponent>();
     robot.addComponent<TransformComponent>();
-    robot.addComponent<JointComponent>("world_joint", JointComponent::Type::Fixed, robot, baseLink->second, glm::mat4(1.0f), glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec2{0.0f, 0.0f});
+    robot.addComponent<JointComponent>("world_joint", JointType::Fixed, robot, baseLink->second, glm::mat4(1.0f), glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec2{0.0f, 0.0f});
     auto& robotComponent = robot.addComponent<RobotComponent>(baseLink->second);
     robotComponent.visible.val() = true; 
     robotComponent.visible();
@@ -238,11 +240,11 @@ bool RobotLoader::setupLink(const std::string& name, const std::filesystem::path
     for (auto& vertex : mesh->data.vertices)
         triangulation.data->vertices.emplace_back(vertex.position);
     triangulation.data->indices = mesh->data.indices;
-    triangulation.update(glm::mat4(1.0f));
+    updateTriangulation(triangulation, glm::mat4(1.0f));
 
     // bounding box
     auto& boundingBox = link.getComponent<BoundingBoxComponent>();
-    boundingBox.update(triangulation.limits);
+    updateBoundingBox(boundingBox, triangulation.limits);
 
     // render data
     Renderer::addMeshData(mesh->id, mesh->data);
@@ -250,11 +252,11 @@ bool RobotLoader::setupLink(const std::string& name, const std::filesystem::path
 
     // set transform changed callback
     auto& trans = link.getComponent<TransformComponent>();
-    trans.setChangedCallback([&triangulation, &boundingBox](const glm::mat4& transform) {
-        triangulation.update(transform);
-        boundingBox.update(triangulation.limits);
+    setTransformChangedCallback(trans, [&triangulation, &boundingBox](const glm::mat4& transform) {
+        updateTriangulation(triangulation, transform);
+        updateBoundingBox(boundingBox, triangulation.limits);
     });
-    trans.detectChange();
+    detectTransformChange(trans);
 
     s_links.emplace(name, link);
     return true;
@@ -262,13 +264,13 @@ bool RobotLoader::setupLink(const std::string& name, const std::filesystem::path
 
 bool RobotLoader::setupJoint(const std::string& name, const XmlNode& jointNode)
 {
-    JointComponent::Type jointType;
+    JointType jointType;
     auto it = jointNode.attributes.find("type");
     if (it == jointNode.attributes.cend() || it->second.index() != 2) {
         LOG_ERROR << "No joint type specified: " << name;
         return false;
     }
-    jointType = JointComponent::strToType(std::get<std::string>(it->second).c_str());
+    jointType = jointStrToType(std::get<std::string>(it->second).c_str());
 
     // extract nodes with transformation data, parent, child and limit
     std::optional<XmlNode> originNode, parentNode, childNode, axisNode, limitNode;

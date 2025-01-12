@@ -1,9 +1,13 @@
 #include "pch.h"
 
 #include "Scene.h"
+#include "Camera.h"
+
 #include "Entity.h"
 #include "Components.h"
-#include "Camera.h"
+#include "ComponentUtils/TransformUtils.h"
+#include "ComponentUtils/TriangulationUtils.h"
+#include "ComponentUtils/RobotUtils.h"
 
 #include "Window/Input.h"
 
@@ -68,7 +72,7 @@ void Scene::init()
         if (!entity.hasComponent<TriangulationComponent>()) {
             auto& triangulation = entity.addComponent<TriangulationComponent>();
             triangulation.data = component.createTriangulation();
-            triangulation.update(transform.get());
+            updateTriangulation(triangulation, transform);
         }
     });
 
@@ -78,8 +82,8 @@ void Scene::init()
         auto& triangulation = entity.addComponentIfNotExists<TriangulationComponent>();       
         auto& boundingBox = entity.addComponentIfNotExists<BoundingBoxComponent>();
 
-        triangulation.update(transform.get());
-        boundingBox.update(triangulation.limits);
+        updateTriangulation(triangulation, transform);
+        updateBoundingBox(boundingBox, triangulation.limits);
     }>();
 
     //------------------------------------------------------
@@ -108,7 +112,7 @@ void Scene::init()
         EntitiyIds::basePlateId = basePlate.getComponent<IdComponent>().id;
         auto& trans = basePlate.getComponent<TransformComponent>();
         trans.scale = {12.0f, 12.0f, 12.0f};
-        basePlate.getComponent<TriangulationComponent>().update(trans);
+        updateTriangulation(basePlate.getComponent<TriangulationComponent>(), trans);
         auto& properties = basePlate.getComponent<PropertiesComponent>();
         properties.copyable = false;
         properties.editable = false;
@@ -170,7 +174,7 @@ void Scene::update(const Timestep dt)
     {
         auto view = s_registry.view<RobotComponent>();
         for (auto [entity, robot] : view.each()) {
-            robot.update(dt, entity);
+            updateRobot(robot, entity, dt);
         }
     }
 
@@ -181,12 +185,12 @@ void Scene::update(const Timestep dt)
             if (!properties.visible)
                 continue;
 
-            transform.detectChange();
+            detectTransformChange(transform);
 
             if (plane.hasTexture())
-                Renderer::drawPlane(transform.get(), std::get<std::shared_ptr<Texture2D>>(plane.material));
+                Renderer::drawPlane(transform, std::get<std::shared_ptr<Texture2D>>(plane.material));
             else
-                Renderer::drawPlane(transform.get(), std::get<glm::vec4>(plane.material));
+                Renderer::drawPlane(transform, std::get<glm::vec4>(plane.material));
         }
     }
 
@@ -207,14 +211,14 @@ void Scene::update(const Timestep dt)
                 if (!frame.internalVisible)
                     continue;
 
-                triangulation.update(*frame.internalTransform * transform.get());
-                Renderer::drawFrame(*frame.internalTransform * transform.get());
+                updateTriangulation(triangulation, *frame.internalTransform * (glm::mat4&)transform);
+                Renderer::drawFrame(*frame.internalTransform * (glm::mat4&)transform);
             }
             else {
                 if (!properties.visible)
                     continue;
 
-                triangulation.update(transform);
+                updateTriangulation(triangulation, transform);
                 Renderer::drawFrame(transform);
             }
         }
@@ -227,8 +231,8 @@ void Scene::update(const Timestep dt)
             if (!properties.visible)
                 continue;
 
-            transform.detectChange();
-            Renderer::drawSphere(transform.get(), sphere.color);
+            detectTransformChange(transform);
+            Renderer::drawSphere(transform, sphere.color);
         }
     }
 
@@ -239,10 +243,10 @@ void Scene::update(const Timestep dt)
             if (!properties.visible)
                 continue;
 
-            transform.detectChange();
-            Renderer::drawMesh(transform.get(), mesh.id);
+            detectTransformChange(transform);
+            Renderer::drawMesh(transform, mesh.id);
             if (boundingBox.visible)
-                Renderer::drawBox(transform.get(), mesh.id, boundingBox.color);
+                Renderer::drawBox(transform, mesh.id, boundingBox.color);
         }
     }
     
@@ -371,19 +375,19 @@ bool Scene::onMouseDropped(MouseDroppedEvent& e)
             triangulation.data->indices = mesh->data.indices;
 
             auto& boundingBox = meshEntity.getComponent<BoundingBoxComponent>();
-            triangulation.update(glm::mat4(1.0f));
-            boundingBox.update(triangulation.limits);
+            updateTriangulation(triangulation, glm::mat4(1.0f));
+            updateBoundingBox(boundingBox, triangulation.limits);
 
             BoxData boxData;
             boxData.vertices = boundingBox.data->vertices;
             Renderer::addBoxData(mesh->id, boxData);
 
             auto& trans = meshEntity.getComponent<TransformComponent>();
-            trans.setChangedCallback([&triangulation, &boundingBox](const glm::mat4& transform) {
-                triangulation.update(transform);
-                boundingBox.update(triangulation.limits);
+            setTransformChangedCallback(trans, [&triangulation, &boundingBox](const glm::mat4& transform) {
+                updateTriangulation(triangulation, transform);
+                updateBoundingBox(boundingBox, triangulation.limits);
             });
-            trans.detectChange();
+            detectTransformChange(trans);
 
             LOG_TRACE << "added mesh " << path;
         }

@@ -7,6 +7,7 @@
 
 #include "Scene/Entity.h"
 #include "Scene/Components.h"
+#include "Scene/ComponentUtils/TriangulationUtils.h"
 
 #include "ImGui/ImGuiLayer.h"
 
@@ -264,12 +265,12 @@ void CameraController::startDragging(const glm::vec2& p_mouse_screen)
         Entity entity{e};
         if (entity.hasComponent<BoundingBoxComponent>()) {
             const auto& boundingBox = entity.getComponent<BoundingBoxComponent>();
-            if (!boundingBox.rayIntersects(ray_world))
+            if (!rayIntersectsBoundingBox(boundingBox, ray_world))
                 continue;
         }
 
         float dist;
-        if (triangulation.rayIntersection(ray_world, p_hitTmp_world, dist)) {
+        if (rayTriangulationIntersection(triangulation, ray_world, p_hitTmp_world, dist)) {
             LOG_TRACE << entity.getTag();
             if (!hit || dist < minDist) {
                 hit = true;
