@@ -330,11 +330,11 @@ struct SphereRendererComponent
 
 struct MeshRendererComponent
 {
-    const UUID id;
+    UUID id;
 
-    MeshRendererComponent(const UUID id) : id{id} {}
-    MeshRendererComponent() = delete;
+    MeshRendererComponent() = default;
     MeshRendererComponent(const MeshRendererComponent&) = default;
+    MeshRendererComponent(const UUID id) : id{id} {}
 };
 
 //------------------------------------------------------
@@ -378,20 +378,22 @@ struct JointComponent
             return t_child_world;
     }
 
-    void destroy()
+    void destroy(const bool destroyParent = true)
     {
         if (childLink.hasComponent<JointComponent>())
-            childLink.getComponent<JointComponent>().destroy();
+            childLink.getComponent<JointComponent>().destroy(false);
         Scene::destroyEntity(childLink);
+        if (destroyParent)
+            Scene::destroyEntity(parentLink);
     }
 
-    void recurse(const std::function<void(Entity)>& func, const bool execForParent = false)
+    void recurse(const std::function<void(Entity)>& func, const bool execForParent = true)
     {
         if (childLink.hasComponent<JointComponent>())
-            childLink.getComponent<JointComponent>().recurse(func);
-        func(childLink);
+            childLink.getComponent<JointComponent>().recurse(func, false);
+        func(childLink);  
         if (execForParent)
-            func(parentLink);
+            func(parentLink);      
     }
 
     static constexpr const char* typeToStr(const Type type)
@@ -429,44 +431,93 @@ struct RobotComponent
     EdgeDetector<bool> visible;
     EdgeDetector<bool> clickable;
     EdgeDetector<bool> drawFrames;
+    EdgeDetector<float> frameScale;
     EdgeDetector<bool> drawBoundingBoxes;
+    EdgeDetector<glm::vec4> boundingBoxColor;
+
+    std::vector<std::reference_wrapper<JointComponent>> joints;
     std::optional<Trajectory> trajectory;
 
-    RobotComponent(const Entity baseLink) : baseLink{baseLink}, visible{true}, clickable{true}, drawFrames{false}, drawBoundingBoxes{false} {}
+    RobotComponent(const Entity baseLink) : baseLink{baseLink}, visible{true}, clickable{true}, drawFrames{true}, frameScale{0.4f},
+                                            drawBoundingBoxes{false}, boundingBoxColor{glm::vec4{0.0f, 1.0f, 0.0f, 1.0f}} { setupJoints(); }
     RobotComponent() = delete;
     RobotComponent(const RobotComponent&) = default;
 
-    void update(Entity entity)
+    void update(const Timestep dt, Entity entity)
     {
         if (entity.hasComponent<JointComponent>()) {
             auto& joint = entity.getComponent<JointComponent>();
             joint.forwardTransform();
 
+            // properties
             auto& properties = entity.getComponent<PropertiesComponent>();
             if ((bool&)visible = properties.visible; visible().edge()) {
                 joint.recurse([this](Entity entity) -> void {
                     if (entity.hasComponent<PropertiesComponent>())
                         entity.getComponent<PropertiesComponent>().visible = visible;
-                }, true);
+                });
             }
             if ((bool&)clickable = properties.clickable; clickable().edge()) {
                 joint.recurse([this](Entity entity) -> void {
                     if (entity.hasComponent<PropertiesComponent>())
                         entity.getComponent<PropertiesComponent>().clickable = clickable;
-                }, true);
+                });
             }
 
+            // frames
             if (drawFrames().edge()) {
                 joint.recurse([this](Entity entity) -> void {
                     if (entity.hasComponent<FrameRendererComponent>())
                         entity.getComponent<FrameRendererComponent>().internalVisible = drawFrames;
-                }, true);
+                });
             }
+            if (frameScale().edge()) {
+                joint.recurse([this](Entity entity) -> void {
+                    if (entity.hasComponent<FrameRendererComponent>() && entity.getComponent<FrameRendererComponent>().internalTransform) {
+                        auto& t = *entity.getComponent<FrameRendererComponent>().internalTransform;
+                        t = rescaleMat4(t) * glm::transpose(glm::scale(glm::transpose(glm::mat4(1.0f)), {frameScale, frameScale, frameScale}));
+                        if (entity.hasComponent<TriangulationComponent>())
+                            entity.getComponent<TriangulationComponent>().update(t);
+                    }                   
+                });
+            }
+
+            // bounding box
             if (drawBoundingBoxes().edge()) {
                 joint.recurse([this](Entity entity) -> void {
                     if (entity.hasComponent<BoundingBoxComponent>())
                         entity.getComponent<BoundingBoxComponent>().visible = drawBoundingBoxes;
-                }, true);
+                });
+            }
+            if (boundingBoxColor().edge()) {
+                joint.recurse([this](Entity entity) -> void {
+                    if (entity.hasComponent<BoundingBoxComponent>())
+                        entity.getComponent<BoundingBoxComponent>().color = boundingBoxColor;        
+                });
+            }
+
+            // trajectory
+            if (trajectory) {
+                auto& [active, currentTime, currentIndex, jointValues, times] = *trajectory; 
+
+                while (currentTime > times[currentIndex] && currentIndex < jointValues.size())
+                    currentIndex++;
+                while (currentTime < times[currentIndex-1] && currentIndex > 0)
+                    currentIndex--;
+
+                if (active && currentTime < times.back()) {
+                    currentTime += dt;
+
+                    if (currentIndex > 0 && currentIndex < jointValues.size())
+                        for (size_t i = 0; i < joints.size(); ++i) {           
+                            joints[joints.size()-i-1].get().value = map(
+                                currentTime, 
+                                times[currentIndex-1],          times[currentIndex], 
+                                jointValues[currentIndex-1][i], jointValues[currentIndex][i]); 
+                        } 
+                }
+                else if (active)
+                    active = false;
             }
         }
     }
@@ -477,4 +528,16 @@ struct RobotComponent
             baseLink.getComponent<JointComponent>().destroy();
         Scene::destroyEntity(baseLink);
     }
+
+private:
+    void setupJoints()
+    {
+        if (baseLink.hasComponent<JointComponent>()) {
+            baseLink.getComponent<JointComponent>().recurse([this](Entity entity) -> void {
+                if (entity.hasComponent<JointComponent>())
+                    joints.push_back(entity.getComponent<JointComponent>());
+            });
+        }
+    }
+
 };

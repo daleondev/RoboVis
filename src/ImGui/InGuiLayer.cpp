@@ -43,7 +43,7 @@ void ImGuiLayer::init()
 	ImGui_ImplOpenGL3_Init("#version 300 es");
 
     io.Fonts->AddFontDefault();
-    io.FontDefault = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", 18.0f);
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", 16.0f);
 
     ImGui_ImplOpenGL3_DestroyFontsTexture();
     ImGui_ImplOpenGL3_CreateFontsTexture();

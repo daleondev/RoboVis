@@ -108,6 +108,27 @@ static glm::mat4& setMat4Translation(glm::mat4& mat, const glm::vec3& p)
     return mat;
 }
 
+static glm::mat4& setMat4AxisX(glm::mat4& mat, const glm::vec3& x)
+{
+    for (size_t i = 0; i < 3; ++i)
+        mat[i][0] = x[i];
+    return mat;
+}
+
+static glm::mat4& setMat4AxisY(glm::mat4& mat, const glm::vec3& y)
+{
+    for (size_t i = 0; i < 3; ++i)
+        mat[i][1] = y[i];
+    return mat;
+}
+
+static glm::mat4& setMat4AxisZ(glm::mat4& mat, const glm::vec3& z)
+{
+    for (size_t i = 0; i < 3; ++i)
+        mat[i][2] = z[i];
+    return mat;
+}
+
 static glm::mat4& setMat4Rotation(glm::mat4& mat, const glm::mat3& r)
 {
     for (size_t i = 0; i < 3; ++i)
@@ -140,6 +161,15 @@ static glm::vec3 getMat4AxisX(const glm::mat4& mat)
 static glm::mat3 getMat4Rotation(const glm::mat4& mat)
 {
     return MAT3(mat, 0, 0);
+}
+
+static glm::mat4 rescaleMat4(const glm::mat4& mat)
+{
+    glm::mat4 rescaled = mat;
+    setMat4AxisX(rescaled, glm::normalize(getMat4AxisX(mat)));
+    setMat4AxisY(rescaled, glm::normalize(getMat4AxisY(mat)));
+    setMat4AxisZ(rescaled, glm::normalize(getMat4AxisZ(mat)));
+    return rescaled;
 }
 
 static glm::vec4 extendedCross(const glm::vec4& A, const glm::vec4& B, const glm::vec4& C)

@@ -225,6 +225,7 @@ bool RobotLoader::setupLink(const std::string& name, const std::filesystem::path
     link.addComponent<MeshRendererComponent>(mesh->id);
     auto& frame = link.addComponent<FrameRendererComponent>();
     frame.internalTransform = glm::transpose(glm::scale(glm::mat4(1.0f), {0.4, 0.4, 0.4}));
+    frame.internalVisible = true;
 
     // link properties
     auto& properties = link.getComponent<PropertiesComponent>();
@@ -404,12 +405,7 @@ std::optional<Trajectory> RobotLoader::loadTrajectory(const Entity entity, const
     }
 
     auto& robot = entity.getComponent<RobotComponent>();
-    auto& firstJoint = robot.baseLink.getComponent<JointComponent>();
-    size_t numJoints = 0;
-    firstJoint.recurse([&numJoints](Entity entity) -> void {
-        if (entity.hasComponent<JointComponent>())
-            ++numJoints;
-    }, true);
+    const auto numJoints = robot.joints.size();
     LOG_TRACE << "Num Joints: " << numJoints;
 
     Trajectory traj;

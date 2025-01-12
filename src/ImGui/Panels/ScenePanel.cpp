@@ -5,6 +5,7 @@
 #include "Scene/Components.h"
 
 Entity ScenePanel::s_selected = EntityNull;
+EdgeDetector<bool> ScenePanel::s_trajSlider;
 
 void ScenePanel::render(const ImGuiID dockspaceId)
 {
@@ -158,28 +159,62 @@ void ScenePanel::components(Entity entity)
 
     // properties
     drawComponent<PropertiesComponent>("Properties", entity, [](auto& properties) {
+        const auto contentRegionAvail = ImGui::GetContentRegionAvail();
+
         ImGui::Checkbox("Visible", &properties.visible);
-        // ImGui::Checkbox("Editable", &properties.editable);
-        // ImGui::Checkbox("Removable", &properties.removable);
-        // ImGui::Checkbox("Copyable", &properties.copyable);
+        ImGui::SameLine(0.5f*contentRegionAvail.x);
+        ImGui::SetNextItemWidth(0.45f*contentRegionAvail.x);
         ImGui::Checkbox("Clickable", &properties.clickable);
+        ImGui::Separator();
+
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::Checkbox("Editable", &properties.editable);
+        ImGui::SameLine(0.5f*contentRegionAvail.x);
+        ImGui::SetNextItemWidth(0.45f*contentRegionAvail.x);
+        ImGui::Checkbox("Removable", &properties.removable);
+        ImGui::Checkbox("Copyable", &properties.copyable);
+        ImGui::PopItemFlag();
     }, false);
 
     // transform
     drawComponent<TransformComponent>("Transform", entity, [&properties](auto& transform) {
         if (!properties.editable)
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+
         ImGui::DragFloat3("Translation", glm::value_ptr(transform.translation), 0.1f);
+        ImGui::Separator();
         ImGui::DragFloat3("Rotation", glm::value_ptr(transform.rotation), 0.1f);
+        ImGui::Separator();
         ImGui::DragFloat3("Scale", glm::value_ptr(transform.scale), 0.1f);
+
         if (!properties.editable)
             ImGui::PopItemFlag();
     }, false);
 
     // robot
-    drawComponent<RobotComponent>("Robot", entity, [&properties](auto& robot) {
+    drawComponent<RobotComponent>("Robot", entity, [&entity](auto& robot) {
+        const auto contentRegionAvail = ImGui::GetContentRegionAvail();
+
+        // properties
         ImGui::Checkbox("Draw Frames", &(bool&)robot.drawFrames);
+        if (robot.drawFrames) {
+            ImGui::SameLine(0.5f*contentRegionAvail.x);
+            ImGui::SetNextItemWidth(0.4f*contentRegionAvail.x);
+            ImGui::DragFloat("Scale", &(float&)robot.frameScale, 0.01f, 0.01f, 1.0f);
+        }
         ImGui::Checkbox("Draw Bounding Boxes", &(bool&)robot.drawBoundingBoxes);
+        if (robot.drawBoundingBoxes) {
+            ImGui::SameLine(0.5f*contentRegionAvail.x);
+            ImGui::SetNextItemWidth(0.4f*contentRegionAvail.x);
+            ImGui::ColorEdit4("Color", glm::value_ptr((glm::vec4&)robot.boundingBoxColor));
+        }
+        ImGui::Separator();
+
+        // joint values
+        ImGui::Text("Joint values:");
+        for (JointComponent& joint : robot.joints | std::views::reverse) {
+            ImGui::SliderAngle(joint.name.c_str(), &joint.value, rad2deg(joint.limits[0]), rad2deg(joint.limits[1]));
+        }
         ImGui::Separator();
 
         if (robot.trajectory) {       
@@ -187,7 +222,7 @@ void ScenePanel::components(Entity entity)
 
             ImGui::Text("Trajectory");
 
-            ImGui::SameLine(ImGui::GetContentRegionAvail().x - lineHeight * 0.5f);
+            ImGui::SameLine(contentRegionAvail.x - lineHeight * 0.5f);
             if (ImGui::Button(("-##" + std::to_string(typeid(robot.trajectory).hash_code())).c_str(), ImVec2{ lineHeight, lineHeight }))
                 ImGui::OpenPopup("TrajectorySettings");
 
@@ -202,20 +237,21 @@ void ScenePanel::components(Entity entity)
 
             auto& trajectory = *robot.trajectory;
             ImGui::SetNextItemWidth(0.94 * ImGui::GetCurrentWindow()->Size.x);
-            ImGui::SliderFloat("##Traj", &trajectory.currentTime, trajectory.times.front(), trajectory.times.back());				
-            // m_sliderTime.val() = trajectory->currentTime;
-            // if (m_sliderTime().edge() && !trajectory->active && trajectory->currentIndex > 0 && trajectory->currentIndex < trajectory->jointValues.size()) {
-            //     for (size_t i = 0; i < robot->numJoints(); ++i) {           
-            //         controlData.jointValues[i] = map(
-            //             trajectory->currentTime, 
-            //             trajectory->times[trajectory->currentIndex-1], 			trajectory->times[trajectory->currentIndex], 
-            //             trajectory->jointValues[trajectory->currentIndex-1][i], trajectory->jointValues[trajectory->currentIndex][i]); 
-            //     } 
-            // }
+            ScenePanel::s_trajSlider = ImGui::SliderFloat("##Traj", &trajectory.currentTime, trajectory.times.front(), trajectory.times.back());	
+
+            if (trajectory.currentIndex == 0) trajectory.currentIndex = 1;
+            if (s_trajSlider().edge() && !trajectory.active && trajectory.currentIndex > 0 && trajectory.currentIndex < trajectory.jointValues.size()) {
+                for (size_t i = 0; i < robot.joints.size(); ++i) {           
+                    robot.joints[robot.joints.size()-i-1].get().value = map(
+                        trajectory.currentTime, 
+                        trajectory.times[trajectory.currentIndex-1], 			trajectory.times[trajectory.currentIndex], 
+                        trajectory.jointValues[trajectory.currentIndex-1][i], trajectory.jointValues[trajectory.currentIndex][i]); 
+                } 
+            }
 
             // m_buttonPlay.val() = ImGui::ImageButton("play", TextureLibrary::get("image")->getId(), ImVec2(20, 20), ImVec2(0, 1), ImVec2(1, 0));
             // if (m_buttonPlay().rising()) {
-            //     trajectory->active = !trajectory->active;
+            //     trajectory.active = !trajectory.active;
             // }
         }
     }, false);
@@ -225,7 +261,7 @@ void ScenePanel::components(Entity entity)
         ImGui::Text("Type: %s", JointComponent::typeToStr(joint.type));
         if (joint.type == JointComponent::Type::Revolute)
             ImGui::SliderAngle("Joint value", &joint.value, rad2deg(joint.limits[0]), rad2deg(joint.limits[1]));
-    }, properties.editable);
+    }, properties.editable && entity.hasComponent<JointComponent>() && (entity.getComponent<JointComponent>().type != JointComponent::Type::Fixed));
 
     // triangulation
     drawComponent<TriangulationComponent>("Triangulation", entity, [&properties](auto& triangulation) {

@@ -2,6 +2,8 @@
 
 #include "Scene/Scene.h"
 
+#include "Util/EdgeDetector.h"
+
 class ScenePanel
 {
 public:
@@ -19,4 +21,5 @@ private:
     static void displayAddComponentEntry(const std::string& entryName);
 
     static Entity s_selected;
+    static EdgeDetector<bool> s_trajSlider;
 };

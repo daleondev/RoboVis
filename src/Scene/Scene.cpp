@@ -170,7 +170,7 @@ void Scene::update(const Timestep dt)
     {
         auto view = s_registry.view<RobotComponent>();
         for (auto [entity, robot] : view.each()) {
-            robot.update(entity);
+            robot.update(dt, entity);
         }
     }
 
@@ -234,15 +234,15 @@ void Scene::update(const Timestep dt)
 
     // draw meshes
     {
-        auto view = s_registry.view<MeshRendererComponent, TransformComponent, PropertiesComponent, TriangulationComponent, BoundingBoxComponent>();
-        for (auto [entity, mesh, transform, properties, triangulation, boundingBox] : view.each()) {
+        auto group = s_registry.group<MeshRendererComponent>(entt::get_t<TransformComponent, PropertiesComponent, TriangulationComponent, BoundingBoxComponent>());
+        for (auto [entity, mesh, transform, properties, triangulation, boundingBox] : group.each()) {
             if (!properties.visible)
                 continue;
 
             transform.detectChange();
             Renderer::drawMesh(transform.get(), mesh.id);
             if (boundingBox.visible)
-                Renderer::drawBox(transform.get(), mesh.id, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+                Renderer::drawBox(transform.get(), mesh.id, boundingBox.color);
         }
     }
     
